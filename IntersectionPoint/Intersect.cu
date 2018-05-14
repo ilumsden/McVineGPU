@@ -40,6 +40,7 @@ __global__ void intersectRectangle(
     const float X, const float Y, const float Z, const int N,
     float* ts)
 {
+    __syncthreads();
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N)
     {
