@@ -8,13 +8,13 @@ INCLUDES = -I. -I$(CUDA_INSTALL_PATH)/include
 
 COMMONFLAGS += $(INCLUDES)
 NVCCFLAGS += $(COMMONFLAGS)
-NVCCFLAGS += --std=c++11
+NVCCFLAGS += --std=c++11 -g -G
 CXXFLAGS += $(COMMONFLAGS)
 CXXFLAGS += --std=c++11
 
 LIB_CUDA := -L$(CUDA_INSTALL_PATH)/lib -lcudart
 OBJS = Intersect.cu.o test.cpp.o
-TARGET = Test
+TARGET = IntersectBlock
 LINKLINE = $(LINK) -o $(TARGET) $(OBJS) $(LIB_CUDA)
 
 .SUFFIXES: .cpp .cu .o
@@ -27,3 +27,6 @@ LINKLINE = $(LINK) -o $(TARGET) $(OBJS) $(LIB_CUDA)
 
 $(TARGET): $(OBJS)
 	$(LINKLINE)
+
+clean:
+	rm $(OBJS)

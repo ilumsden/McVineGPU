@@ -1,77 +1,80 @@
-//#include <thrust/host_vector.h>
-//#include <thrust/device_vector.h>
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <iomanip>
+#include <iterator>
 #include <fstream>
+#include <stdexcept>
 
 #include <cuda_runtime.h>
 #include <device_functions.h>
 
 #include "Intersect.cuh"
 
+__device__ int size_shared;
+
+__device__ void calculate_time(float* ts, float x, float y, float z,
+                               float va, float vb, float vc, const float A, const float B)
+{
+    float t = (0-z)/vc;
+    float r1x = x+va*t; 
+    float r1y = y+vb*t;
+    if (fabs(r1x) < A/2 && fabs(r1y) < B/2)
+    {
+        int size = atomicAdd(&size_shared, 1);
+        ts[size - 1] = t;
+    }
+    else
+    {
+        int size = atomicAdd(&size_shared, 1);
+        ts[size - 1] = -1;
+    }
+}
+
 __global__ void intersectRectangle(
     float* rx, float* ry, float* rz,
     float* vx, float* vy, float* vz,
     const float X, const float Y, const float Z, const int N,
-    float* ts, int &size)
+    float* ts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    int stride = blockDim.x * gridDim.x;
-    auto calct = [&ts, &size](float x, float y, float z, 
-                    float va, float vb, float vc, const float A, const float B)
-        {
-            float t = (0-z)/vc;
-            float r1x = x+va*t; 
-            float r1y = y+vb*t;
-            if (fabs(r1x) < A/2 && fabs(r1y) < B/2)
-            {
-                atomicAdd(&size, 1);
-                ts[size - 1] = t;
-            }
-            else
-            {
-                atomicAdd(&size, 1);
-                ts[size - 1] = -1;
-            }
-        };
-    for (int i = index; i < N; i += stride)
+    if (index < N)
     {
-        if (vz[i] != 0)
+        if (vz[index] != 0)
         {
-            calct(rx[i], ry[i], rz[i]-Z/2, vx[i], vy[i], vz[i], X, Y);
-            calct(rx[i], ry[i], rz[i]+Z/2, vx[i], vy[i], vz[i], X, Y);
+            calculate_time(ts, rx[index], ry[index], rz[index]-Z/2, vx[index], vy[index], vz[index], X, Y);
+            calculate_time(ts, rx[index], ry[index], rz[index]+Z/2, vx[index], vy[index], vz[index], X, Y);
         }
         else
         {
-            atomicAdd(&size, 1);
+            int size = atomicAdd(&size_shared, 1);
             ts[size - 1] = -1;
-            atomicAdd(&size, 1);
-            ts[size - 1] = -1;
-        }
-        if (vx[i] != 0)
-        {
-            calct(ry[i], rz[i], rx[i]-X/2, vy[i], vz[i], vx[i], Y, Z);
-            calct(ry[i], rz[i], rx[i]+X/2, vy[i], vz[i], vx[i], Y, Z);
-        }
-        else
-        {
-            atomicAdd(&size, 1);
-            ts[size - 1] = -1;
-            atomicAdd(&size, 1);
+            size = atomicAdd(&size_shared, 1);
             ts[size - 1] = -1;
         }
-        if (vy[i] != 0)
+        if (vx[index] != 0)
         {
-            calct(rz[i], rx[i], ry[i]-Y/2, vz[i], vx[i], vy[i], Z, X);
-            calct(rz[i], rx[i], ry[i]+Y/2, vz[i], vx[i], vy[i], Z, X);
+            calculate_time(ts, ry[index], rz[index], rx[index]-X/2, vy[index], vz[index], vx[index], Y, Z);
+            calculate_time(ts, ry[index], rz[index], rx[index]+X/2, vy[index], vz[index], vx[index], Y, Z);
         }
         else
         {
-            atomicAdd(&size, 1);
+            int size = atomicAdd(&size_shared, 1);
             ts[size - 1] = -1;
-            atomicAdd(&size, 1);
+            size = atomicAdd(&size_shared, 1);
+            ts[size - 1] = -1;
+        }
+        if (vy[index] != 0)
+        {
+            calculate_time(ts, rz[index], rx[index], ry[index]-Y/2, vz[index], vx[index], vy[index], Z, X);
+            calculate_time(ts, rz[index], rx[index], ry[index]+Y/2, vz[index], vx[index], vy[index], Z, X);
+        }
+        else
+        {
+            int size = atomicAdd(&size_shared, 1);
+            ts[size - 1] = -1;
+            size = atomicAdd(&size_shared, 1);
             ts[size - 1] = -1;
         }
     }
@@ -98,19 +101,36 @@ void CudaDriver::cudaHandler(std::shared_ptr<Box> b, std::vector< std::shared_pt
         vz[c] = (float)ray->vz;
         c++;
     }
-    //thrust::host_vector<float> host_time;
-    //thrust::device_vector<float> device_time;
     float *device_time;
-    cudaMallocManaged(&device_time, 6*N*sizeof(float));
-    //device_time.resize(6*N);
+    cudaMallocManaged(&device_time, 6*N*sizeof(float)+1*sizeof(float));
+    for (int i = 0; i < 6*N+1; i++)
+    {
+        device_time[i] = -5;
+    }
     int blockSize = 256;
-    int size = 0;
     int numBlocks = (N + blockSize - 1) / blockSize;
-    intersectRectangle<<<numBlocks, blockSize>>>(rx, ry, rz, vx, vy, vz, b->x, b->y, b->z, N, device_time, size);
+    intersectRectangle<<<numBlocks, blockSize>>>(rx, ry, rz, vx, vy, vz, b->x, b->y, b->z, N, device_time);
     cudaDeviceSynchronize();
-    //thrust::copy(device_time.begin(), device_time.end(), host_time.begin());
+    printf("\n");
+    for (int i = 0; i < 6*N; i++)
+    {
+        printf("t = %f\n", device_time[i]);
+        printf("i = %i\n\n", i);
+    }
     std::vector<float> host_time;
-    std::copy(&device_time[0], &device_time[size], host_time.begin());
+    int count = 0;
+    while (1)
+    {
+        if (device_time[count] == -5)
+        {
+            break;
+        }
+        else
+        {
+            host_time.push_back(device_time[count]);
+            count++;
+        }
+    }
     std::fstream fout;
     fout.open("time.txt", std::ios::out);
     if (!fout.is_open())
@@ -123,6 +143,7 @@ void CudaDriver::cudaHandler(std::shared_ptr<Box> b, std::vector< std::shared_pt
         if (i % 6 == 0)
         {
             int ind = i/6;
+            fout << "\n";
             fout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
                  << rx[ind] << " " << ry[ind] << " " << rz[ind] << " || "
                  << vx[ind] << " " << vy[ind] << " " << vz[ind] << " | "
@@ -131,7 +152,7 @@ void CudaDriver::cudaHandler(std::shared_ptr<Box> b, std::vector< std::shared_pt
         else
         {
             std::string buf = "        ";
-            fout << buf << " " << buf << " " << buf << "    " << buf << " " << buf << " " << buf << " | "
+            fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << " | "
                  << std::fixed << std::setprecision(5) << std::setw(8) << std::right << host_time[i] << "\n";
         }
     }
