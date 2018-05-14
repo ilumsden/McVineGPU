@@ -5,10 +5,6 @@
 #include <iomanip>
 #include <iterator>
 #include <fstream>
-#include <stdexcept>
-
-#include <cuda_runtime.h>
-#include <device_functions.h>
 
 #include "Intersect.cuh"
 
