@@ -16,6 +16,7 @@
 __device__ void calculate_time(float* ts, float x, float y, float z,
                                float va, float vb, float vc, const float A, const float B, const int offset)
 {
+    __syncthreads();
     float t = (0-z)/vc;
     float r1x = x+va*t; 
     float r1y = y+vb*t;
@@ -40,7 +41,6 @@ __global__ void intersectRectangle(
     const float X, const float Y, const float Z, const int N,
     float* ts)
 {
-    __syncthreads();
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N)
     {
