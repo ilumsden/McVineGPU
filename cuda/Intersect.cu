@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <fstream>
 
-#include "Intersect.cuh"
+#include "Intersect.hpp"
 
 /* This is a device-only helper function for determining the time
  * it takes a ray to intersect the rectangle specified by the `intersectRectangle`
@@ -81,7 +81,7 @@ __global__ void intersectRectangle(
  * `intersectRectangle` function above, calling said function, and parsing
  * the returned data.
  */
-void CudaDriver::cudaHandler(std::shared_ptr<Box> b, std::vector< std::shared_ptr<Ray> > rays)
+void CudaDriver::cudaHandler(std::shared_ptr<Box> b, std::vector< std::shared_ptr<Ray> > &rays)
 {
     // N is the number of rays considered
     int N = (int)(rays.size());
@@ -183,7 +183,7 @@ void CudaDriver::cudaHandler(std::shared_ptr<Box> b, std::vector< std::shared_pt
 }
 
 // A simple wrapper of the cudaHandler function
-void CudaDriver::operator()(std::shared_ptr<Box> b, std::vector< std::shared_ptr<Ray> > rays)
+void CudaDriver::operator()(std::shared_ptr<Box> b, std::vector< std::shared_ptr<Ray> > &rays)
 {
     cudaHandler(b, rays);
 }

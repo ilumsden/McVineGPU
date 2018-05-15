@@ -4,7 +4,7 @@
 
 #include <cuda_runtime.h>
 
-#include "cuda/Intersect.cuh"
+#include "Intersect.hpp"
 
 int main()
 {
