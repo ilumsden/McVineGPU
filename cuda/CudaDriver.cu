@@ -111,7 +111,7 @@ void CudaDriver::handleRectIntersect(const std::shared_ptr<const Box> b,
     return;
 }
 
-void CudaDriver::findScatteringSites(const std::vector< std::shared_ptr<Ray> > &rays,
+/*void CudaDriver::findScatteringSites(const std::vector< std::shared_ptr<Ray> > &rays,
                                      const std::vector<float> &int_times, std::vector<float> &sites)
 {
     int N = (int)(rays.size());
@@ -147,13 +147,16 @@ void CudaDriver::findScatteringSites(const std::vector< std::shared_ptr<Ray> > &
     }
     int blockSize = 256;
     int numBlocks = (N + blockSize - 1) / blockSize;
-}
+    curandState *state;
+    cudaMallocManaged(&state, blockSize*numBlocks);
+    calcScatteringSites
+}*/
 
 // A simple wrapper of the cudaHandler function
 void CudaDriver::operator()(std::shared_ptr<Box> b, std::vector< std::shared_ptr<Ray> > &rays)
 {
     std::vector<float> int_times;
     handleRectIntersect(b, rays, int_times);
-    std::vector<float> scattering_sites;
-    findScatteringSites(rays, int_times, scattering_sites);
+    //std::vector<float> scattering_sites;
+    //findScatteringSites(rays, int_times, scattering_sites);
 }

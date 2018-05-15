@@ -69,5 +69,17 @@ __global__ void intersectRectangle(
         }
     }
 }
+/*
+__device__ float randCoord(float x1, float y1, float z1, float x2, float y2, float z2, curandState *state)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    curand_init(1337, index, 0, &state[index]);
+    
+}
 
-
+__global__ void calcScatteringSites(const float* rx, const float* ry, const float* rz,
+                                    const float* vx, const float* vy, const float* vz,
+                                    const float* ts, float* pos, curandState *state)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+}*/
