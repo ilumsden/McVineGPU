@@ -1,33 +1,49 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5.1)
+message(STATUS "CMake version: ${CMAKE_VERSION}")
 
-project(McVineGPUTest LANGUAGES CXX)
+project(McVineGPUTest)
 
-find_package(CUDA REQUIRED)
+option(USE_CUDA "Use CUDA" ON)
 
 set(CMAKE_CUDA_COMPILER nvcc)
+
 set(CMAKE_CXX_STANDARD 11)
-# Other libraries can be added later if needed
-set(CLIBS ${CUDA_LIBRARIES}) 
-set(LIBS ${LIBS} ${CLIBS})
-set(CUDA_PROPAGATE_HOST_FLAGS ON)
-set(CUDA_SEPARABLE_COMPILATION OFF)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-list(APPEND CUDA_NVCC_FLAGS -g; -G)
+file(GLOB cpu_source_files "${CMAKE_SOURCE_DIR}/src/*.cpp")
+file(GLOB gpu_source_files "${CMAKE_SOURCE_DIR}/cuda/*.cu")
 
-include_directories(${CUDA_INCLUDE_DIRS})
-include_directories(${PROJECT_SOURCE_DIR})
-add_subdirectory(src)
-add_subdirectory(include)
-add_subdirectory(cuda)
+include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/cuda)
 
-file(GLOB_RECURSE CUDA_SRC cuda/*.cu)
-file(GLOB_RECURSE SRC src/*.cpp)
+if( ("${CMAKE_VERSION}" VERSION_EQUAL 3.8) OR
+        ("${CMAKE_VERSION}" VERSION_GREATER 3.8) )
+    # Modern CMake
+    if(USE_CUDA)
+        enable_language("CUDA")
+        add_executable(McVineGPUTest ${cpu_source_files} ${gpu_source_files})
+        set_property(McVineGPUTest tgt PROPERTY CUDA_STANDARD 11)
+    else(USE_CUDA)
+        add_executable(McVineGPUTest ${cpu_source_files})
+    endif()
+else()
+    # Old CMake
+    add_executable(McVineGPUTest ${cpu_source_files})
+    if(USE_CUDA)
+        find_package(CUDA 8.0)
+        if(NOT CUDA_FOUND)
+            message(STATUS "CUDA not found")
+            set(USE_CUDA OFF)
+        else()
+            list(APPEND CUDA_NVCC_FLAGS "--std=c++11")
+            CUDA_ADD_LIBRARY(McVineGPUTest_gpu ${gpu_source_files} STATIC)
+            target_link_libraries(McVineGPUTest McVineGPUTest_gpu)
+        endif()
+    endif()
+endif()
 
-cuda_add_library(cudaMcVine ${CUDA_SRC} STATIC)
-set(LIBS ${LIBS} ${cudaMcVine})
-
-message("Libs:")
-message(${LIBS})
-
-add_executable(McVineGPUTest ${SRC})
-target_link_libraries(${PROG_NAME} ${LIBS})
+message(STATUS "USE_CUDA: ${USE_CUDA}")
+if(USE_CUDA)
+    add_definitions(-DUSE_CUDA)
+endif()
