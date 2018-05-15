@@ -5,83 +5,16 @@
 #include <iomanip>
 #include <fstream>
 
-#include "Intersect.hpp"
-
-/* This is a device-only helper function for determining the time
- * it takes a ray to intersect the rectangle specified by the `intersectRectangle`
- * function.
- * It is a CUDA version of the intersectRectangle function from ArrowIntersector.cc
- * in McVine (mcvine/packages/mccomposite/lib/geometry/visitors/ArrowIntersector.cc).
- */
-__device__ void calculate_time(float* ts, float x, float y, float z,
-                               float va, float vb, float vc, const float A, const float B, const int offset)
-{
-    __syncthreads();
-    float t = (0-z)/vc;
-    float r1x = x+va*t; 
-    float r1y = y+vb*t;
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (fabs(r1x) < A/2 && fabs(r1y) < B/2)
-    {
-        ts[offset + index*6] = t;
-    }
-    else
-    {
-        ts[offset + index*6] = -1;
-    }
-}
-
-/* This is a global CUDA function for controlling the calculation of intersection
- * times. It is a CUDA version of the visit function from ArrowIntersector.cc in
- * McVine (mcvine/packages/mccomposite/lib/geometry/visitors/ArrowIntersector.cc).
- */
-__global__ void intersectRectangle(
-    float* rx, float* ry, float* rz,
-    float* vx, float* vy, float* vz,
-    const float X, const float Y, const float Z, const int N,
-    float* ts)
-{
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (index < N)
-    {
-        if (vz[index] != 0)
-        {
-            calculate_time(ts, rx[index], ry[index], rz[index]-Z/2, vx[index], vy[index], vz[index], X, Y, 0);
-            calculate_time(ts, rx[index], ry[index], rz[index]+Z/2, vx[index], vy[index], vz[index], X, Y, 1);
-        }
-        else
-        {
-            ts[index*6] = -1;
-            ts[index*6 + 1] = -1;
-        }
-        if (vx[index] != 0)
-        {
-            calculate_time(ts, ry[index], rz[index], rx[index]-X/2, vy[index], vz[index], vx[index], Y, Z, 2);
-            calculate_time(ts, ry[index], rz[index], rx[index]+X/2, vy[index], vz[index], vx[index], Y, Z, 3);
-        }
-        else
-        {
-            ts[index*6 + 2] = -1;
-            ts[index*6 + 3] = -1;
-        }
-        if (vy[index] != 0)
-        {
-            calculate_time(ts, rz[index], rx[index], ry[index]-Y/2, vz[index], vx[index], vy[index], Z, X, 4);
-            calculate_time(ts, rz[index], rx[index], ry[index]+Y/2, vz[index], vx[index], vy[index], Z, X, 5);
-        }
-        else
-        {
-            ts[index*6 + 4] = -1;
-            ts[index*6 + 5] = -1;
-        }
-    }
-}
+#include "CudaDriver.hpp"
+#include "Kernels.hpp"
 
 /* This is the host-side driver function for setting up the data for the
  * `intersectRectangle` function above, calling said function, and parsing
  * the returned data.
  */
-void CudaDriver::cudaHandler(std::shared_ptr<Box> b, std::vector< std::shared_ptr<Ray> > &rays)
+void CudaDriver::handleRectIntersect(const std::shared_ptr<const Box> b, 
+                                     const std::vector< std::shared_ptr<Ray> > &rays,
+                                     std::vector<float> &host_time)
 {
     // N is the number of rays considered
     int N = (int)(rays.size());
@@ -124,13 +57,7 @@ void CudaDriver::cudaHandler(std::shared_ptr<Box> b, std::vector< std::shared_pt
     intersectRectangle<<<numBlocks, blockSize>>>(rx, ry, rz, vx, vy, vz, b->x, b->y, b->z, N, device_time);
     // Halts CPU progress until the CUDA code has finished
     cudaDeviceSynchronize();
-    /*printf("\n");
-    for (int i = 0; i < 6*N; i++)
-    {
-        printf("t = %f\n", device_time[i]);
-    }*/
     // Copies the contents of the device_time array into a vector
-    std::vector<float> host_time;
     int count = 0;
     while (1)
     {
@@ -145,6 +72,7 @@ void CudaDriver::cudaHandler(std::shared_ptr<Box> b, std::vector< std::shared_pt
         }
     }
     // Opens a file stream and prints the relevant data to time.txt
+    // NOTE: this is for debugging purposes only. This will be removed later.
     std::fstream fout;
     fout.open("time.txt", std::ios::out);
     if (!fout.is_open())
@@ -182,8 +110,18 @@ void CudaDriver::cudaHandler(std::shared_ptr<Box> b, std::vector< std::shared_pt
     return;
 }
 
+/*void CudaDriver::findScatteringSites(const std::shared_ptr<const Box> b,
+                                     const std::vector< std::shared_ptr<Ray> > &rays,
+                                     const std::vector<float> &int_times, std::vector<float> &sites)
+{
+    
+}*/
+
 // A simple wrapper of the cudaHandler function
 void CudaDriver::operator()(std::shared_ptr<Box> b, std::vector< std::shared_ptr<Ray> > &rays)
 {
-    cudaHandler(b, rays);
+    std::vector<float> int_times;
+    handleRectIntersect(b, rays, int_times);
+    //std::vector<float> scattering_sites;
+    //findScatteringSites(b, rays, int_times, scattering_sites);
 }
