@@ -69,3 +69,5 @@ __global__ void intersectRectangle(
         }
     }
 }
+
+

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cfloat>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -110,18 +111,49 @@ void CudaDriver::handleRectIntersect(const std::shared_ptr<const Box> b,
     return;
 }
 
-/*void CudaDriver::findScatteringSites(const std::shared_ptr<const Box> b,
-                                     const std::vector< std::shared_ptr<Ray> > &rays,
+void CudaDriver::findScatteringSites(const std::vector< std::shared_ptr<Ray> > &rays,
                                      const std::vector<float> &int_times, std::vector<float> &sites)
 {
-    
-}*/
+    int N = (int)(rays.size());
+    int tsize = (int)(int_times.size());
+    float *rx, *ry, *rz, *vx, *vy, *vz, *ts;
+    cudaMallocManaged(&rx, N*sizeof(float));
+    cudaMallocManaged(&ry, N*sizeof(float));
+    cudaMallocManaged(&rz, N*sizeof(float));
+    cudaMallocManaged(&vx, N*sizeof(float));
+    cudaMallocManaged(&vy, N*sizeof(float));
+    cudaMallocManaged(&vz, N*sizeof(float));
+    cudaMallocManaged(&ts, tsize*sizeof(float));
+    int c = 0;
+    for (auto ray : rays)
+    {
+        rx[c] = (float)ray->x;
+        ry[c] = (float)ray->y;
+        rz[c] = (float)ray->z;
+        vx[c] = (float)ray->vx;
+        vy[c] = (float)ray->vy;
+        vz[c] = (float)ray->vz;
+        for (int i = 0; i < 6; i++)
+        {
+            ts[6*c + i] = int_times[6*c + i];
+        }
+        c++;
+    }
+    float *pos;
+    cudaMallocManaged(&pos, 3*N*sizeof(float) + 1*sizeof(float));
+    for (int i = 0; i < 3*N+1; i++)
+    {
+        pos[i] = FLT_MAX;
+    }
+    int blockSize = 256;
+    int numBlocks = (N + blockSize - 1) / blockSize;
+}
 
 // A simple wrapper of the cudaHandler function
 void CudaDriver::operator()(std::shared_ptr<Box> b, std::vector< std::shared_ptr<Ray> > &rays)
 {
     std::vector<float> int_times;
     handleRectIntersect(b, rays, int_times);
-    //std::vector<float> scattering_sites;
-    //findScatteringSites(b, rays, int_times, scattering_sites);
+    std::vector<float> scattering_sites;
+    findScatteringSites(rays, int_times, scattering_sites);
 }
