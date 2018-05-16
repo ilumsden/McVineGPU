@@ -15,8 +15,9 @@ class CudaDriver
         void handleRectIntersect(const std::shared_ptr<const Box> b, 
                                  const std::vector< std::shared_ptr<Ray> > &rays,
                                  std::vector<float> &host_time);
-        /*void findScatteringSites(const std::vector< std::shared_ptr<Ray> > &rays,
-                                 const std::vector<float> &int_times, std::vector<float> &sites);*/
+        void findScatteringSites(const std::shared_ptr<const Box> b,
+                                 const std::vector< std::shared_ptr<Ray> > &rays,
+                                 const std::vector<float> &int_times, std::vector<float> &sites);
 };
 
 #endif

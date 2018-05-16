@@ -108,10 +108,12 @@ void CudaDriver::handleRectIntersect(const std::shared_ptr<const Box> b,
     cudaFree(vx);
     cudaFree(vy);
     cudaFree(vz);
+    cudaFree(device_time);
     return;
 }
 
-/*void CudaDriver::findScatteringSites(const std::vector< std::shared_ptr<Ray> > &rays,
+void CudaDriver::findScatteringSites(const std::shared_ptr<const Box> b,
+                                     const std::vector< std::shared_ptr<Ray> > &rays,
                                      const std::vector<float> &int_times, std::vector<float> &sites)
 {
     int N = (int)(rays.size());
@@ -149,14 +151,62 @@ void CudaDriver::handleRectIntersect(const std::shared_ptr<const Box> b,
     int numBlocks = (N + blockSize - 1) / blockSize;
     curandState *state;
     cudaMallocManaged(&state, blockSize*numBlocks);
-    calcScatteringSites
-}*/
+    calcScatteringSites<<<numBlocks, blockSize>>>(rx, ry, rz, vx, vy, vz, b->x, b->y, b->z, ts, pos, state, N);
+    cudaDeviceSynchronize();
+    while (1)
+    {
+        if (pos[count] == FLT_MAX)
+        {
+            break;
+        }
+        else
+        {
+            sites.push_back(pos[count]);
+            count++;
+        }
+    }
+    std::fstream fout;
+    fout.open("scatteringSites.txt", std::ios::out);
+    if (!fout.is_open())
+    {
+        std::cerr << "scatteringSites.txt could not be opened.\n";
+        exit(-2);
+    }
+    for (int i = 0; i < (int)(sites.size()); i++)
+    {
+        if (i % 3 == 0)
+        {
+            int ind = i/3;
+            fout << "\n";
+            fout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+                 << rx[ind] << " " << ry[ind] << " " << rz[ind] << " || "
+                 << vx[ind] << " " << vy[ind] << " " << vz[ind] << " | "
+                 << sites[i] << "\n";
+        }
+        else
+        {
+            std::string buf = "        ";
+            fout << buf << " " << buf << " " << buf "  " << buf << " " << buf << " " << buf << " | "
+                 << std::fixed << std::setprecision(5) << std::setw(8) << std::right << sites[i] << "\n";
+        }
+    }
+    fout.close();
+    cudaFree(rx); 
+    cudaFree(ry);
+    cudaFree(rz);
+    cudaFree(vx); 
+    cudaFree(vy);
+    cudaFree(vz);
+    cudaFree(pos);
+    cudaFree(state);
+    return;
+}
 
 // A simple wrapper of the cudaHandler function
 void CudaDriver::operator()(std::shared_ptr<Box> b, std::vector< std::shared_ptr<Ray> > &rays)
 {
     std::vector<float> int_times;
     handleRectIntersect(b, rays, int_times);
-    //std::vector<float> scattering_sites;
-    //findScatteringSites(rays, int_times, scattering_sites);
+    std::vector<float> scattering_sites;
+    findScatteringSites(rays, int_times, scattering_sites);
 }
