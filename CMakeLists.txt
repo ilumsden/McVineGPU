@@ -11,23 +11,25 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+
 file(GLOB cpu_source_files "${CMAKE_SOURCE_DIR}/src/*.cpp")
 file(GLOB gpu_source_files "${CMAKE_SOURCE_DIR}/cuda/*.cu")
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/cuda)
 
-if( ("${CMAKE_VERSION}" VERSION_EQUAL 3.8) OR
-        ("${CMAKE_VERSION}" VERSION_GREATER 3.8) )
+#if( ("${CMAKE_VERSION}" VERSION_EQUAL 3.8) OR
+#        ("${CMAKE_VERSION}" VERSION_GREATER 3.8) )
     # Modern CMake
-    if(USE_CUDA)
-        enable_language("CUDA")
-        add_executable(McVineGPUTest ${cpu_source_files} ${gpu_source_files})
-        set_property(McVineGPUTest tgt PROPERTY CUDA_STANDARD 11)
-    else(USE_CUDA)
-        add_executable(McVineGPUTest ${cpu_source_files})
-    endif()
-else()
+#    if(USE_CUDA)
+#        enable_language("CUDA")
+#        add_executable(McVineGPUTest ${cpu_source_files} ${gpu_source_files})
+#        set_property(TARGET McVineGPUTest PROPERTY CUDA_STANDARD 11)
+#    else(USE_CUDA)
+#        add_executable(McVineGPUTest ${cpu_source_files})
+#    endif()
+#else()
     # Old CMake
     add_executable(McVineGPUTest ${cpu_source_files})
     if(USE_CUDA)
@@ -41,7 +43,7 @@ else()
             target_link_libraries(McVineGPUTest McVineGPUTest_gpu)
         endif()
     endif()
-endif()
+#endif()
 
 message(STATUS "USE_CUDA: ${USE_CUDA}")
 if(USE_CUDA)
