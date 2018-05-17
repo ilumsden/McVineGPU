@@ -54,6 +54,15 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<Box> &b,
     // Calculates the thread and block parameters for CUDA
     int blockSize = 256;
     int numBlocks = (N + blockSize - 1) / blockSize;
+    int device = -1;
+    cudaGetDevice(&device);
+    cudaMemPrefetchAsync(rx, N*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(ry, N*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(rz, N*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(vx, N*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(vy, N*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(vz, N*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(device_time, 6*N*sizeof(float)+sizeof(float), device, NULL);
     // Starts the CUDA code
     intersectRectangle<<<numBlocks, blockSize>>>(rx, ry, rz, vx, vy, vz, b->x, b->y, b->z, N, device_time);
     // Halts CPU progress until the CUDA code has finished
@@ -151,6 +160,16 @@ void CudaDriver::findScatteringSites(std::shared_ptr< Box> &b,
     int numBlocks = (N + blockSize - 1) / blockSize;
     curandState *state;
     cudaMallocManaged(&state, blockSize*numBlocks);
+    int device = -1;
+    cudaGetDevice(&device);
+    cudaMemPrefetchAsync(rx, N*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(ry, N*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(rz, N*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(vx, N*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(vy, N*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(vz, N*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(ts, tsize*sizeof(float), device, NULL);
+    cudaMemPrefetchAsync(pos, 3*N*sizeof(float)+sizeof(float), device, NULL);
     calcScatteringSites<<<numBlocks, blockSize>>>(rx, ry, rz, vx, vy, vz, b->x, b->y, b->z, ts, pos, state, N);
     cudaDeviceSynchronize();
     int count = 0;

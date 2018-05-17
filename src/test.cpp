@@ -4,10 +4,13 @@
 
 #include <cuda_runtime.h>
 
+#include <chrono>
+
 #include "CudaDriver.hpp"
 
 int main()
 {
+    auto start = std::chrono::steady_clock::now();
     std::shared_ptr<Box> b = std::make_shared<Box>(2, 2, 2);
     std::vector< std::shared_ptr<Ray> > rays;
     /*rays.push_back(std::make_shared<Ray>(5, 5, 5, -1.2, -1.2, -1));
@@ -35,5 +38,8 @@ int main()
     }
     CudaDriver cd;
     cd(b, rays);
+    auto stop = std::chrono::steady_clock::now();
+    double time = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+    printf("Run Time: %f ms\n", time);
     return 0;
 }
