@@ -70,15 +70,18 @@ __global__ void intersectRectangle(
     }
 }
 
-__device__ float randCoord(float x0, float x1, float t0, float t1, curandState *state)
+__device__ void randCoord(float x0, float x1, float y0, float y1, float z0, float z1, float t0, float t1, float *sx, float *sy, float *sz, curandState *state)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     float dt = t1 - t0;
-    float m = (x1 - x0)/dt;
+    float mx = (x1 - x0)/dt;
+    float my = (y1 - y0)/dt;
+    float mz = (z1 - z0)/dt;
     float randt = curand_uniform(&(state[index]));
     randt *= dt;
-    //float randx = x0 + m * randt;
-    return x0 + m*randt;
+    *sx = x0 + mx*randt;
+    *sy = y0 + my*randt;
+    *sz = z0 + mz*randt;
 }
 
 __global__ void calcScatteringSites(const float* rx, const float* ry, const float* rz,
@@ -153,9 +156,13 @@ __global__ void calcScatteringSites(const float* rx, const float* ry, const floa
                 default: return;// Some type of error handling
             }
             __syncthreads();
-            pos[3*index + 0] = randCoord(x0, x1, t0, t1, state);
-            pos[3*index + 1] = randCoord(y0, y1, t0, t1, state);
-            pos[3*index + 2] = randCoord(z0, z1, t0, t1, state);
+            randCoord(x0, x1, y0, y1, z0, z1, t0, t1, &pos[3*index + 0], &pos[3*index + 1], &pos[3*index + 2], state);
+        }
+        else
+        {
+            pos[3*index + 0] = 20 * X;
+            pos[3*index + 1] = 20 * Y;
+            pos[3*index + 2] = 20 * Z;
         }
     }
 }

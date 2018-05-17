@@ -10,7 +10,7 @@ __global__ void intersectRectangle(float* rx, float* ry, float* rz,
                                    const float X, const float Y, const float Z,
                                    const int N, float* ts);
 
-__device__ float randCoord(float x0, float x1, float t0, float t1, curandState *state);
+__device__ void randCoord(float x0, float x1, float y0, float y1, float z0, float z1, float t0, float t1, float *sx, float *sy, float *sz, curandState *state);
 
 __global__ void calcScatteringSites(const float* rx, const float* ry, const float* rz,
                                     const float* vx, const float* vy, const float* vz,
