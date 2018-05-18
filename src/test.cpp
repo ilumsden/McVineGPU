@@ -19,7 +19,7 @@ int main()
     std::normal_distribution<double> norm(5, 1);
     std::default_random_engine re(time(NULL));
     std::uniform_real_distribution<double> vel(0, 1);
-    for (int i = 0; i < (1 << 10); i++)
+    for (int i = 0; i < 10000000; i++)
     {
         std::shared_ptr<Ray> tmp = std::make_shared<Ray>(norm(re), norm(re), norm(re));
         double veltmp[3];
@@ -39,7 +39,7 @@ int main()
     CudaDriver cd;
     cd(b, rays);
     auto stop = std::chrono::steady_clock::now();
-    double time = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-    printf("Total Time = %f ms\n", time);
+    double time = std::chrono::duration<double>(stop - start).count();
+    printf("Total Time = %f s\n", time);
     return 0;
 }

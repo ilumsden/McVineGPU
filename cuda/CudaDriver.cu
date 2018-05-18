@@ -6,6 +6,8 @@
 #include <iomanip>
 #include <fstream>
 
+#include <chrono>
+
 #include "CudaDriver.hpp"
 #include "Kernels.hpp"
 
@@ -75,6 +77,7 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<Box> &b,
     // Calculates the thread and block parameters for CUDA
     int blockSize = 256;
     int numBlocks = (N + blockSize - 1) / blockSize;
+    printf("blockSize = %i\nnumBlocks = %i\n", blockSize, numBlocks);
     /* Creates a float array in host and device memory to store the 
      * results of the CUDA calculations. The initial value of each element
      * is -5.
@@ -185,11 +188,27 @@ void CudaDriver::findScatteringSites(std::shared_ptr< Box> &b,
 // A simple wrapper of the cudaHandler function
 void CudaDriver::operator()(std::shared_ptr<Box> &b, const std::vector< std::shared_ptr<Ray> > &rays)
 {
+    auto start = std::chrono::steady_clock::now();
     allocInitialData(rays);
+    auto stop = std::chrono::steady_clock::now();
+    double time = std::chrono::duration<double>(stop-start).count();
+    printf("allocInitialData: %f\n", time);
     std::vector<float> int_times;
     std::vector<float> int_coords;
+    start = std::chrono::steady_clock::now();
     handleRectIntersect(b, int_times, int_coords);
+    stop = std::chrono::steady_clock::now();
+    time = std::chrono::duration<double>(stop - start).count();
+    printf("handleRectIntersect: %f\n", time);
     std::vector<float> scattering_sites;
+    start = std::chrono::steady_clock::now();
     findScatteringSites(b, int_times, int_coords, scattering_sites);
+    stop = std::chrono::steady_clock::now();
+    time = std::chrono::duration<double>(stop - start).count();
+    printf("findScatteringSites: %f\n", time);
+    start = std::chrono::steady_clock::now();
     freeInitialData();
+    stop = std::chrono::steady_clock::now();
+    time = std::chrono::duration<double>(stop - start).count();
+    printf("freeInitialData: %f\n", time);
 }
