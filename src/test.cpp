@@ -40,6 +40,6 @@ int main()
     cd(b, rays);
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-    printf("Run Time: %f ms\n", time);
+    printf("Total Time = %f ms\n", time);
     return 0;
 }
