@@ -1,26 +1,65 @@
 #include "Kernels.hpp"
 
+__global__ void initArray(float *data, int size, const float val)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for (int i = idx; i < size; i += stride)
+    {
+        data[i] = val;
+    }
+}
+
 /* This is a device-only helper function for determining the time
  * it takes a ray to intersect the rectangle specified by the `intersectRectangle`
  * function.
  * It is a CUDA version of the intersectRectangle function from ArrowIntersector.cc
  * in McVine (mcvine/packages/mccomposite/lib/geometry/visitors/ArrowIntersector.cc).
  */
-__device__ void calculate_time(float* ts, float x, float y, float z,
-                               float va, float vb, float vc, const float A, const float B, const int offset)
+__device__ void calculate_time(float* ts, float* pts,
+                               float x, float y, float z, float zdiff,
+                               float va, float vb, float vc, 
+                               const float A, const float B, 
+                               const int key, const int off1, int &off2)
 {
-    __syncthreads();
+    z += zdiff;
     float t = (0-z)/vc;
     float r1x = x+va*t; 
     float r1y = y+vb*t;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (fabs(r1x) < A/2 && fabs(r1y) < B/2)
     {
-        ts[offset + index*6] = t;
+        float ix, iy, iz;
+        if (key == 0)
+        {
+            ix = r1x;
+            iy = r1y;
+            iz = -zdiff;
+        }
+        else if (key == 1)
+        {
+            iy = r1x;
+            iz = r1y;
+            ix = -zdiff;
+        }
+        else
+        {
+            iz = r1x;
+            ix = r1y;
+            iy = -zdiff;
+        }
+        if (off2 == 0 || off2 == 3)
+        {
+            pts[6*index + off2] = ix;
+            pts[6*index + off2 + 1] = iy;
+            pts[6*index + off2 + 2] = iz;
+            off2 += 3;
+        }
+        ts[off1 + index*6] = t;
     }
     else
     {
-        ts[offset + index*6] = -1;
+        ts[off1 + index*6] = -1;
     }
 }
 
@@ -32,15 +71,16 @@ __global__ void intersectRectangle(
     float* rx, float* ry, float* rz,
     float* vx, float* vy, float* vz,
     const float X, const float Y, const float Z, const int N,
-    float* ts)
+    float* ts, float* pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N)
     {
+        int offset = 0;
         if (vz[index] != 0)
         {
-            calculate_time(ts, rx[index], ry[index], rz[index]-Z/2, vx[index], vy[index], vz[index], X, Y, 0);
-            calculate_time(ts, rx[index], ry[index], rz[index]+Z/2, vx[index], vy[index], vz[index], X, Y, 1);
+            calculate_time(ts, pts, rx[index], ry[index], rz[index], -Z/2, vx[index], vy[index], vz[index], X, Y, 0, 0, offset);
+            calculate_time(ts, pts, rx[index], ry[index], rz[index], Z/2, vx[index], vy[index], vz[index], X, Y, 0, 1, offset);
         }
         else
         {
@@ -49,8 +89,8 @@ __global__ void intersectRectangle(
         }
         if (vx[index] != 0)
         {
-            calculate_time(ts, ry[index], rz[index], rx[index]-X/2, vy[index], vz[index], vx[index], Y, Z, 2);
-            calculate_time(ts, ry[index], rz[index], rx[index]+X/2, vy[index], vz[index], vx[index], Y, Z, 3);
+            calculate_time(ts, pts, ry[index], rz[index], rx[index], -X/2, vy[index], vz[index], vx[index], Y, Z, 1, 2, offset);
+            calculate_time(ts, pts, ry[index], rz[index], rx[index], X/2, vy[index], vz[index], vx[index], Y, Z, 1, 3, offset);
         }
         else
         {
@@ -59,8 +99,8 @@ __global__ void intersectRectangle(
         }
         if (vy[index] != 0)
         {
-            calculate_time(ts, rz[index], rx[index], ry[index]-Y/2, vz[index], vx[index], vy[index], Z, X, 4);
-            calculate_time(ts, rz[index], rx[index], ry[index]+Y/2, vz[index], vx[index], vy[index], Z, X, 5);
+            calculate_time(ts, pts, rz[index], rx[index], ry[index], -Y/2, vz[index], vx[index], vy[index], Z, X, 2, 4, offset);
+            calculate_time(ts, pts, rz[index], rx[index], ry[index], Y/2, vz[index], vx[index], vy[index], Z, X, 2, 5, offset);
         }
         else
         {
@@ -70,93 +110,56 @@ __global__ void intersectRectangle(
     }
 }
 
-__device__ void randCoord(float x0, float x1, float y0, float y1, float z0, float z1, float t0, float t1, float *sx, float *sy, float *sz, curandState *state)
+__device__ void randCoord(float* inters, float* time , float *sx, float *sy, float *sz, curandState *state)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    float dt = t1 - t0;
-    float mx = (x1 - x0)/dt;
-    float my = (y1 - y0)/dt;
-    float mz = (z1 - z0)/dt;
+    float dt = time[1] - time[0];
+    float mx = (inters[3] - inters[0])/dt;
+    float my = (inters[4] - inters[1])/dt;
+    float mz = (inters[5] - inters[2])/dt;
     float randt = curand_uniform(&(state[index]));
     randt *= dt;
-    *sx = x0 + mx*randt;
-    *sy = y0 + my*randt;
-    *sz = z0 + mz*randt;
+    *sx = inters[0] + mx*randt;
+    *sy = inters[1] + my*randt;
+    *sz = inters[2] + mz*randt;
 }
 
 __global__ void calcScatteringSites(const float* rx, const float* ry, const float* rz,
                                     const float* vx, const float* vy, const float* vz,
                                     const float X, const float Y, const float Z,
-                                    const float* ts, float* pos, curandState *state, const int N)
+                                    const float* ts, const float* int_pts, float* pos, curandState *state, const int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    float x0, y0, z0, x1, y1, z1;
     if (index < N)
     {
-        float t0 = -5;
-        float t1 = -5;
-        int key0 = -1;
-        int key1 = -1;
+        float inters[6];
+        float t[2] = {-5, -5}; 
         curand_init(1337, index, 0, &(state[index]));
-        __syncthreads();
         for (int i = 0; i < 6; i++)
         {
             if (ts[6*index + i] != -1)
             {
-                if (t0 == -5)
-                {
-                    t0 = ts[6*index + i];
-                    key0 = i;
-                }
-                else if (t1 == -5)
-                {
-                    t1 = ts[6*index + i];
-                    key1 = i;
-                }
-                else
-                {
-                    // Some type of error handling
-                    return;
-                }
+                t[i/3] = ts[6*index + i];
             }
+            inters[i] = int_pts[6*index + i];
         }
         __syncthreads();
-        if (t0 != -5 && t1 != -5)
+        if (t[0] != -5 && t[1] != -5)
         {
-            if (t0 > t1)
+            if (t[0] > t[1])
             {
-                float tmpt;
-                int tmpk;
-                tmpt = t0;
-                t0 = t1;
-                t1 = tmpt;
-                tmpk = key0;
-                key0 = key1;
-                key1 = tmpk;
+                float tmpt, tmpc;
+                tmpt = t[0];
+                t[0] = t[1];
+                t[1] = tmpt;
+                for (int i = 0; i < 3; i++)
+                {
+                    tmpc = inters[i];
+                    inters[i] = inters[i + 3];
+                    inters[i + 3] = tmpc;
+                }
             }
-            switch(key0)
-            {
-                case 0: z0 = Z/2; x0 = rx[index] + vx[index]*t0; y0 = ry[index] + vy[index]*t0; break;
-                case 1: z0 = -Z/2; x0 = rx[index] + vx[index]*t0; y0 = ry[index] + vy[index]*t0; break;
-                case 2: x0 = X/2; y0 = ry[index] + vy[index]*t0; z0 = rz[index] + vz[index]*t0; break;
-                case 3: x0 = -X/2; y0 = ry[index] + vy[index]*t0; z0 = rz[index] + vz[index]*t0; break;
-                case 4: y0 = Y/2; x0 = rx[index] + vx[index]*t0; z0 = rz[index] + vz[index]*t0; break;
-                case 5: y0 = -Y/2; x0 = rx[index] + vx[index]*t0; z0 = rz[index] + vz[index]*t0; break;
-                default: return;// Some type of error handling
-            }
-            __syncthreads();
-            switch(key1)
-            {
-                case 0: z1 = Z/2; x1 = rx[index] + vx[index]*t1; y1 = ry[index] + vy[index]*t1; break;
-                case 1: z1 = -Z/2; x1 = rx[index] + vx[index]*t1; y1 = ry[index] + vy[index]*t1; break;
-                case 2: x1 = X/2; y1 = ry[index] + vy[index]*t1; z1 = rz[index] + vz[index]*t1; break;
-                case 3: x1 = -X/2; y1 = ry[index] + vy[index]*t1; z1 = rz[index] + vz[index]*t1; break;
-                case 4: y1 = Y/2; x1 = rx[index] + vx[index]*t1; z1 = rz[index] + vz[index]*t1; break;
-                case 5: y1 = -Y/2; x1 = rx[index] + vx[index]*t1; z1 = rz[index] + vz[index]*t1; break;
-                default: return;// Some type of error handling
-            }
-            __syncthreads();
-            randCoord(x0, x1, y0, y1, z0, z1, t0, t1, &pos[3*index + 0], &pos[3*index + 1], &pos[3*index + 2], state);
+            randCoord(&(inters[0]), &(t[0]), &(pos[3*index + 0]), &(pos[3*index + 1]), &(pos[3*index + 2]), state);
         }
         else
         {

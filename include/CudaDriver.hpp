@@ -14,10 +14,19 @@ class CudaDriver
     private:
         void handleRectIntersect(std::shared_ptr<Box> &b, 
                                  const std::vector< std::shared_ptr<Ray> > &rays,
-                                 std::vector<float> &host_time);
+                                 std::vector<float> &host_time, 
+                                 std::vector<float> &int_coords);
         void findScatteringSites(std::shared_ptr<Box> &b,
                                  const std::vector< std::shared_ptr<Ray> > &rays,
-                                 const std::vector<float> &int_times, std::vector<float> &sites);
+                                 const std::vector<float> &int_times, 
+                                 const std::vector<float> &int_coords,
+                                 std::vector<float> &sites);
+
+        //void allocInitialData(const std::vector< std::shared_ptr<Ray> > &rays);
+        //void freeInitialData();
+
+        //float *rx, *ry, *rz, *vx, *vy, *vz;
+        //int N;
 };
 
 #endif
