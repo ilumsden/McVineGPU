@@ -6,8 +6,6 @@
 #include <iomanip>
 #include <fstream>
 
-#include <chrono>
-
 #include "CudaDriver.hpp"
 #include "Kernels.hpp"
 
