@@ -10,14 +10,26 @@
 class CudaDriver
 {
     public:
-        void operator()(std::shared_ptr<Box> &b, const std::vector< std::shared_ptr<Ray> > &rays);
+        CudaDriver(const std::vector< std::shared_ptr<Ray> > &rays, int bS);
+
+        ~CudaDriver();
+
+        void runCalculations(std::shared_ptr<Box> &b);
     private:
+
         void handleRectIntersect(std::shared_ptr<Box> &b, 
-                                 const std::vector< std::shared_ptr<Ray> > &rays,
-                                 std::vector<float> &host_time);
+                                 std::vector<float> &host_time, 
+                                 std::vector<float> &int_coords);
+
         void findScatteringSites(std::shared_ptr<Box> &b,
-                                 const std::vector< std::shared_ptr<Ray> > &rays,
-                                 const std::vector<float> &int_times, std::vector<float> &sites);
+                                 const std::vector<float> &int_times, 
+                                 const std::vector<float> &int_coords,
+                                 std::vector<float> &sites);
+
+        float *rx, *ry, *rz, *vx, *vy, *vz;
+        float *d_rx, *d_ry, *d_rz, *d_vx, *d_vy, *d_vz;
+        int N;
+        int blockSize, numBlocks;
 };
 
 #endif
