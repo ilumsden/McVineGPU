@@ -8,8 +8,19 @@
 
 #include "CudaDriver.hpp"
 
-int main()
+int main(int argc, char **argv)
 {
+    if (argc > 2 || (argc == 2 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "-h")))
+    {
+        printf("./McVineGPUTest [-h|--help] [--blockSize=]\n");
+        return 0;
+    }
+    int blockSize = 512;
+    if (argc == 2)
+    {
+        std::string sizeFlag = argv[1];
+        blockSize = std::stoi(sizeFlag.substr(12));
+    }
     auto start = std::chrono::steady_clock::now();
     std::shared_ptr<Box> b = std::make_shared<Box>(2, 2, 2);
     std::vector< std::shared_ptr<Ray> > rays;
@@ -19,8 +30,11 @@ int main()
     std::normal_distribution<double> norm(5, 1);
     std::default_random_engine re(time(NULL));
     std::uniform_real_distribution<double> vel(0, 1);
-    for (int i = 0; i < 10000000; i++)
+    printf("Starting data creation\n");
+    auto createStart = std::chrono::steady_clock::now();
+    for (int i = 0; i < 100000000; i++)
     {
+        printf("i = %i\n", i);
         std::shared_ptr<Ray> tmp = std::make_shared<Ray>(norm(re), norm(re), norm(re));
         double veltmp[3];
         for (int i = 0; i < 3; i++)
@@ -36,8 +50,15 @@ int main()
         tmp->setVelocities(veltmp[0], veltmp[1], veltmp[2]);
         rays.push_back(tmp);
     }
-    CudaDriver cd;
-    cd(b, rays);
+    auto createStop = std::chrono::steady_clock::now();
+    double createTime = std::chrono::duration<double>(createStop - createStart).count();
+    printf("Data Creation: %f\n", createTime);
+    auto consStart = std::chrono::steady_clock::now();
+    CudaDriver cd(rays, blockSize);
+    auto consStop = std::chrono::steady_clock::now();
+    double consTime = std::chrono::duration<double>(consStop - consStart).count();
+    printf("CudaDriver Constructor: %f\n", consTime);
+    cd.runCalculations(b);
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("Total Time = %f s\n", time);
