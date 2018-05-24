@@ -110,14 +110,39 @@ __global__ void intersectRectangle(
     }
 }
 
-__device__ void randCoord(float* inters, float* time , float *sx, float *sy, float *sz, curandState *state)
+__global__ void simplifyTimes(const float *times, const int N, const int groupSize, float *simp)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < N)
+    {
+        int count = 0;
+        for (int i = 0; i < groupSize; i++)
+        {
+            if (times[groupSize * index + i] != -1 && count < 2)
+            {
+                simp[groupSize*index+count] = times[groupSize*index+i];
+                count++;
+            }
+        }
+    }
+}
+
+__global__ void prepRand(curandState *state, int seed)
+{
+    if (threadIdx.x == 0)
+    {
+        curand_init(seed, blockIdx.x, 0, &state[blockIdx.x]);
+    }
+}
+
+__device__ void randCoord(float* inters, float* time , float *sx, float *sy, float *sz, curandState *state)
+{
+    //int index = blockIdx.x * blockDim.x + threadIdx.x;
     float dt = time[1] - time[0];
     float mx = (inters[3] - inters[0])/dt;
     float my = (inters[4] - inters[1])/dt;
     float mz = (inters[5] - inters[2])/dt;
-    float randt = curand_uniform(&(state[index]));
+    float randt = curand_uniform(&(state[blockIdx.x]));
     randt *= dt;
     *sx = inters[0] + mx*randt;
     *sy = inters[1] + my*randt;
@@ -127,12 +152,12 @@ __device__ void randCoord(float* inters, float* time , float *sx, float *sy, flo
 __global__ void calcScatteringSites(const float* rx, const float* ry, const float* rz,
                                     const float* vx, const float* vy, const float* vz,
                                     const float X, const float Y, const float Z,
-                                    const float* ts, const float* int_pts, float* pos, curandState *state, const int N)
+                                    float* ts, float* int_pts, float* pos, curandState *state, const int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N)
     {
-        float inters[6];
+        /*float inters[6];
         float t[2] = {-5, -5}; 
         curand_init(1337, index, 0, &(state[index]));
         for (int i = 0; i < 6; i++)
@@ -158,8 +183,23 @@ __global__ void calcScatteringSites(const float* rx, const float* ry, const floa
                     inters[i] = inters[i + 3];
                     inters[i + 3] = tmpc;
                 }
+            }*/
+        if (ts[2*index] != -5 && ts[2*index+1] != -5)
+        {
+            if (ts[2*index] > ts[2*index+1])
+            {
+                float tmpt, tmpc;
+                tmpt = ts[2*index];
+                ts[2*index] = ts[2*index+1];
+                ts[2*index+1] = tmpt;
+                for (int i = 6*index; i < 6*index+3; i++)
+                {
+                    tmpc = int_pts[i];
+                    int_pts[i] = int_pts[i + 3];
+                    int_pts[i + 3] = tmpc;
+                }
             }
-            randCoord(&(inters[0]), &(t[0]), &(pos[3*index + 0]), &(pos[3*index + 1]), &(pos[3*index + 2]), state);
+            randCoord(&(int_pts[6*index]), &(ts[2*index]), &(pos[3*index + 0]), &(pos[3*index + 1]), &(pos[3*index + 2]), state);
         }
         else
         {

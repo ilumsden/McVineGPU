@@ -1,5 +1,5 @@
 #!/bin/bash
-./build.sh
+./clean_build.sh
 
 ./build/McVineGPUTest
 
