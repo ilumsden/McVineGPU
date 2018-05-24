@@ -1,3 +1,5 @@
+#include <cstdio>
+
 #include "Kernels.hpp"
 
 __global__ void initArray(float *data, int size, const float val)
@@ -120,7 +122,7 @@ __global__ void simplifyTimes(const float *times, const int N, const int groupSi
         {
             if (times[groupSize * index + i] != -1 && count < 2)
             {
-                simp[groupSize*index+count] = times[groupSize*index+i];
+                simp[2*index+count] = times[groupSize*index+i];
                 count++;
             }
         }
@@ -143,6 +145,7 @@ __device__ void randCoord(float* inters, float* time , float *sx, float *sy, flo
     float my = (inters[4] - inters[1])/dt;
     float mz = (inters[5] - inters[2])/dt;
     float randt = curand_uniform(&(state[blockIdx.x]));
+    printf("Block = %i  randt = %f\n", blockIdx.x, randt);
     randt *= dt;
     *sx = inters[0] + mx*randt;
     *sy = inters[1] + my*randt;

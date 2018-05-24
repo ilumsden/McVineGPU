@@ -122,7 +122,7 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<Box> &b,
     CudaError( cudaMemcpy(ic, intersect, 6*N*sizeof(float), cudaMemcpyDeviceToHost) );
     // Opens a file stream and prints the relevant data to time.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
-    /*std::fstream fout;
+    std::fstream fout;
     fout.open("time.txt", std::ios::out);
     if (!fout.is_open())
     {
@@ -154,7 +154,7 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<Box> &b,
         }
     }
     // Closes the file stream
-    fout.close();*/
+    fout.close();
     // Frees up the memory allocated by the cudaMallocManaged calls above.
     CudaError( cudaFree(device_time) );
     CudaError( cudaFree(intersect) );
