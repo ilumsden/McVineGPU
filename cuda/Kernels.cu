@@ -1,3 +1,5 @@
+#include <cstdio>
+
 #include "Kernels.hpp"
 
 __global__ void initArray(float *data, int size, const float val)
@@ -67,7 +69,7 @@ __device__ void calculate_time(float* ts, float* pts,
  * times. It is a CUDA version of the visit function from ArrowIntersector.cc in
  * McVine (mcvine/packages/mccomposite/lib/geometry/visitors/ArrowIntersector.cc).
  */
-__global__ void intersectRectangle(
+__global__ void intersectBlock(
     float* rx, float* ry, float* rz,
     float* vx, float* vy, float* vz,
     const float X, const float Y, const float Z, const int N,
@@ -110,6 +112,29 @@ __global__ void intersectRectangle(
     }
 }
 
+__global__ void simplifyTimes(const float *times, const int N, const int groupSize, float *simp)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < N)
+    {
+        int count = 0;
+        for (int i = 0; i < groupSize; i++)
+        {
+            if (times[groupSize * index + i] != -1 && count < 2)
+            {
+                simp[2*index+count] = times[groupSize*index+i];
+                count++;
+            }
+        }
+    }
+}
+
+__global__ void prepRand(curandState *state, int seed)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    curand_init(((seed << 10) + idx), 0, 0, &state[idx]); 
+}
+
 __device__ void randCoord(float* inters, float* time , float *sx, float *sy, float *sz, curandState *state)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -124,42 +149,28 @@ __device__ void randCoord(float* inters, float* time , float *sx, float *sy, flo
     *sz = inters[2] + mz*randt;
 }
 
-__global__ void calcScatteringSites(const float* rx, const float* ry, const float* rz,
-                                    const float* vx, const float* vy, const float* vz,
-                                    const float X, const float Y, const float Z,
-                                    const float* ts, const float* int_pts, float* pos, curandState *state, const int N)
+__global__ void calcScatteringSites(const float X, const float Y, const float Z,
+                                    float* ts, float* int_pts, float* pos, curandState *state, const int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N)
     {
-        float inters[6];
-        float t[2] = {-5, -5}; 
-        curand_init(1337, index, 0, &(state[index]));
-        for (int i = 0; i < 6; i++)
+        if (ts[2*index] != -5 && ts[2*index+1] != -5)
         {
-            if (ts[6*index + i] != -1)
-            {
-                t[i/3] = ts[6*index + i];
-            }
-            inters[i] = int_pts[6*index + i];
-        }
-        __syncthreads();
-        if (t[0] != -5 && t[1] != -5)
-        {
-            if (t[0] > t[1])
+            if (ts[2*index] > ts[2*index+1])
             {
                 float tmpt, tmpc;
-                tmpt = t[0];
-                t[0] = t[1];
-                t[1] = tmpt;
-                for (int i = 0; i < 3; i++)
+                tmpt = ts[2*index];
+                ts[2*index] = ts[2*index+1];
+                ts[2*index+1] = tmpt;
+                for (int i = 6*index; i < 6*index+3; i++)
                 {
-                    tmpc = inters[i];
-                    inters[i] = inters[i + 3];
-                    inters[i + 3] = tmpc;
+                    tmpc = int_pts[i];
+                    int_pts[i] = int_pts[i + 3];
+                    int_pts[i + 3] = tmpc;
                 }
             }
-            randCoord(&(inters[0]), &(t[0]), &(pos[3*index + 0]), &(pos[3*index + 1]), &(pos[3*index + 2]), state);
+            randCoord(&(int_pts[6*index]), &(ts[2*index]), &(pos[3*index + 0]), &(pos[3*index + 1]), &(pos[3*index + 2]), state);
         }
         else
         {
