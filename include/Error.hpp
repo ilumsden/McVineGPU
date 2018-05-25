@@ -29,12 +29,12 @@ inline void __cudaErrorNoCode(const char *file, const int line)
         exit(-1);
     }
     // This code affects performance. Only uncomment if needed.
-    err = cudaDeviceSynchronize();
+    /*err = cudaDeviceSynchronize();
     if (cudaSuccess != err)
     {
         fprintf(stderr, "CudaError() with sync failed at %s:%i\nError Message: %s\n", file, line, cudaGetErrorString(err));
         exit(-1);
-    }
+    }*/
 #endif
     return;
 }
