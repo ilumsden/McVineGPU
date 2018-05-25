@@ -69,7 +69,7 @@ __device__ void calculate_time(float* ts, float* pts,
  * times. It is a CUDA version of the visit function from ArrowIntersector.cc in
  * McVine (mcvine/packages/mccomposite/lib/geometry/visitors/ArrowIntersector.cc).
  */
-__global__ void intersectRectangle(
+__global__ void intersectBlock(
     float* rx, float* ry, float* rz,
     float* vx, float* vy, float* vz,
     const float X, const float Y, const float Z, const int N,
@@ -131,62 +131,35 @@ __global__ void simplifyTimes(const float *times, const int N, const int groupSi
 
 __global__ void prepRand(curandState *state, int seed)
 {
-    if (threadIdx.x == 0)
+    /*if (threadIdx.x == 0)
     {
         curand_init(seed, blockIdx.x, 0, &state[blockIdx.x]);
-    }
+    }*/
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    curand_init(((seed << 10) + idx), 0, 0, &state[idx]); 
 }
 
 __device__ void randCoord(float* inters, float* time , float *sx, float *sy, float *sz, curandState *state)
 {
-    //int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
     float dt = time[1] - time[0];
     float mx = (inters[3] - inters[0])/dt;
     float my = (inters[4] - inters[1])/dt;
     float mz = (inters[5] - inters[2])/dt;
-    float randt = curand_uniform(&(state[blockIdx.x]));
-    printf("Block = %i  randt = %f\n", blockIdx.x, randt);
+    float randt = curand_uniform(&(state[index]));
+    //printf("Block Idx = %i  randt = %f\n", blockIdx.x, randt);
     randt *= dt;
     *sx = inters[0] + mx*randt;
     *sy = inters[1] + my*randt;
     *sz = inters[2] + mz*randt;
 }
 
-__global__ void calcScatteringSites(const float* rx, const float* ry, const float* rz,
-                                    const float* vx, const float* vy, const float* vz,
-                                    const float X, const float Y, const float Z,
+__global__ void calcScatteringSites(const float X, const float Y, const float Z,
                                     float* ts, float* int_pts, float* pos, curandState *state, const int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N)
     {
-        /*float inters[6];
-        float t[2] = {-5, -5}; 
-        curand_init(1337, index, 0, &(state[index]));
-        for (int i = 0; i < 6; i++)
-        {
-            if (ts[6*index + i] != -1)
-            {
-                t[i/3] = ts[6*index + i];
-            }
-            inters[i] = int_pts[6*index + i];
-        }
-        __syncthreads();
-        if (t[0] != -5 && t[1] != -5)
-        {
-            if (t[0] > t[1])
-            {
-                float tmpt, tmpc;
-                tmpt = t[0];
-                t[0] = t[1];
-                t[1] = tmpt;
-                for (int i = 0; i < 3; i++)
-                {
-                    tmpc = inters[i];
-                    inters[i] = inters[i + 3];
-                    inters[i + 3] = tmpc;
-                }
-            }*/
         if (ts[2*index] != -5 && ts[2*index+1] != -5)
         {
             if (ts[2*index] > ts[2*index+1])
