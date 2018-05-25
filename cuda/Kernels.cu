@@ -131,10 +131,6 @@ __global__ void simplifyTimes(const float *times, const int N, const int groupSi
 
 __global__ void prepRand(curandState *state, int seed)
 {
-    /*if (threadIdx.x == 0)
-    {
-        curand_init(seed, blockIdx.x, 0, &state[blockIdx.x]);
-    }*/
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     curand_init(((seed << 10) + idx), 0, 0, &state[idx]); 
 }
@@ -147,7 +143,6 @@ __device__ void randCoord(float* inters, float* time , float *sx, float *sy, flo
     float my = (inters[4] - inters[1])/dt;
     float mz = (inters[5] - inters[2])/dt;
     float randt = curand_uniform(&(state[index]));
-    //printf("Block Idx = %i  randt = %f\n", blockIdx.x, randt);
     randt *= dt;
     *sx = inters[0] + mx*randt;
     *sy = inters[1] + my*randt;
