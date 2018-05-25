@@ -117,7 +117,7 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<Box> &b,
     host_time.resize(2*N);
     int_coords.resize(6*N);
     // Calculates the intersection times and coordinates using these kernels
-    intersectRectangle<<<numBlocks, blockSize>>>(d_rx, d_ry, d_rz, d_vx, d_vy, d_vz, b->x, b->y, b->z, N, device_time, intersect);
+    intersectBlock<<<numBlocks, blockSize>>>(d_rx, d_ry, d_rz, d_vx, d_vy, d_vz, b->x, b->y, b->z, N, device_time, intersect);
     CudaErrorNoCode();
     simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 6, simp_times);
     CudaErrorNoCode();
