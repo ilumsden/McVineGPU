@@ -28,6 +28,20 @@ struct cone
     double bx, by, bz;
 };
 
+struct pyramid
+{
+    pyramid() { ; }
+    pyramid(double height, double X, double Y);
+    pyramid(double height, 
+            double amin, double amax, double bmin, double bmax);
+    pyramid(double height,
+            double amin, double amax, double bmin, double bmax
+            double cmin, double cmax);
+    double h;
+    double xmin, xmax, ymin, ymax;
+    double zmin, zmax;
+};
+
 struct sphere
 {
     sphere() { ; }

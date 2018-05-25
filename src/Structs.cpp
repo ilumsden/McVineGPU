@@ -67,6 +67,42 @@ cone::cone(double topradius, double bottomradius, double height,
     bz = bottomz;
 }
 
+pyramid::pyramid(double height, double X, double Y)
+{
+    h = height;
+    xmin = -(X/2);
+    xmax = X/2;
+    ymin = -(Y/2);
+    ymax = Y/2;
+    zmin = -height;
+    zmax = 0;
+}
+
+pyramid::pyramid(double height,
+                 double amin, double amax, double bmin, double bmax)
+{
+    h = height;
+    xmin = amin;
+    xmax = amax;
+    ymin = bmin;
+    ymax = bmax;
+    zmin = -height;
+    zmax = 0;
+}
+
+pyramid::pyramid(double height, 
+                 double amin, double amax, double bmin, double bmax,
+                 double cmin, double cmax)
+{
+    h = height; 
+    xmin = amin;
+    xmax = amax;
+    ymin = bmin;
+    ymax = bmax;
+    zmin = cmin;
+    zmax = cmax;
+}
+
 sphere::sphere(double radius)
 {
     r = radius;
