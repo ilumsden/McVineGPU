@@ -18,37 +18,38 @@ __global__ void initArray(float *data, int size, const float val)
  * It is a CUDA version of the intersectRectangle function from ArrowIntersector.cc
  * in McVine (mcvine/packages/mccomposite/lib/geometry/visitors/ArrowIntersector.cc).
  */
-__device__ void calculate_time(float* ts, float* pts,
-                               float x, float y, float z, float zdiff,
-                               float va, float vb, float vc, 
-                               const float A, const float B, 
-                               const int key, const int off1, int &off2)
+__device__ void calculateTime(float* ts, float* pts,
+                              float x, float y, float z, float zdiff,
+                              float va, float vb, float vc, 
+                              const float amin, const float amax,
+                              const float bmin, const float bmax,
+                              const int key, const int off1, int &off2)
 {
-    z += zdiff;
+    z -= zdiff;
     float t = (0-z)/vc;
     float r1x = x+va*t; 
     float r1y = y+vb*t;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (fabs(r1x) < A/2 && fabs(r1y) < B/2)
+    if ((r1x < amax && r1x > amin) && (r1y < bmax && r1y > bmin))
     {
         float ix, iy, iz;
         if (key == 0)
         {
             ix = r1x;
             iy = r1y;
-            iz = -zdiff;
+            iz = zdiff;
         }
         else if (key == 1)
         {
             iy = r1x;
             iz = r1y;
-            ix = -zdiff;
+            ix = zdiff;
         }
         else
         {
             iz = r1x;
             ix = r1y;
-            iy = -zdiff;
+            iy = zdiff;
         }
         if (off2 == 0 || off2 == 3)
         {
@@ -69,11 +70,12 @@ __device__ void calculate_time(float* ts, float* pts,
  * times. It is a CUDA version of the visit function from ArrowIntersector.cc in
  * McVine (mcvine/packages/mccomposite/lib/geometry/visitors/ArrowIntersector.cc).
  */
-__global__ void intersectBlock(
-    float* rx, float* ry, float* rz,
-    float* vx, float* vy, float* vz,
-    const float X, const float Y, const float Z, const int N,
-    float* ts, float* pts)
+__global__ void intersectBox(float* rx, float* ry, float* rz,
+                             float* vx, float* vy, float* vz,
+                             const float xmin, const float xmax,
+                             const float ymin, const float ymax,
+                             const float zmin, const float zmax,
+                             const int N, float* ts, float* pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N)
@@ -81,8 +83,8 @@ __global__ void intersectBlock(
         int offset = 0;
         if (vz[index] != 0)
         {
-            calculate_time(ts, pts, rx[index], ry[index], rz[index], -Z/2, vx[index], vy[index], vz[index], X, Y, 0, 0, offset);
-            calculate_time(ts, pts, rx[index], ry[index], rz[index], Z/2, vx[index], vy[index], vz[index], X, Y, 0, 1, offset);
+            calculateTime(ts, pts, rx[index], ry[index], rz[index], zmax, vx[index], vy[index], vz[index], xmin, xmax, ymin, ymax, 0, 0, offset);
+            calculateTime(ts, pts, rx[index], ry[index], rz[index], zmin, vx[index], vy[index], vz[index], xmin, xmax, ymin, ymax, 0, 1, offset);
         }
         else
         {
@@ -91,8 +93,8 @@ __global__ void intersectBlock(
         }
         if (vx[index] != 0)
         {
-            calculate_time(ts, pts, ry[index], rz[index], rx[index], -X/2, vy[index], vz[index], vx[index], Y, Z, 1, 2, offset);
-            calculate_time(ts, pts, ry[index], rz[index], rx[index], X/2, vy[index], vz[index], vx[index], Y, Z, 1, 3, offset);
+            calculateTime(ts, pts, ry[index], rz[index], rx[index], xmax, vy[index], vz[index], vx[index], ymin, ymax, zmin, zmax, 1, 2, offset);
+            calculateTime(ts, pts, ry[index], rz[index], rx[index], xmin, vy[index], vz[index], vx[index], ymin, ymax, zmin, zmax, 1, 3, offset);
         }
         else
         {
@@ -101,8 +103,8 @@ __global__ void intersectBlock(
         }
         if (vy[index] != 0)
         {
-            calculate_time(ts, pts, rz[index], rx[index], ry[index], -Y/2, vz[index], vx[index], vy[index], Z, X, 2, 4, offset);
-            calculate_time(ts, pts, rz[index], rx[index], ry[index], Y/2, vz[index], vx[index], vy[index], Z, X, 2, 5, offset);
+            calculateTime(ts, pts, rz[index], rx[index], ry[index], ymax, vz[index], vx[index], vy[index], zmin, zmax, xmin, xmax, 2, 4, offset);
+            calculateTime(ts, pts, rz[index], rx[index], ry[index], ymin, vz[index], vx[index], vy[index], zmin, zmax, xmin, xmax, 2, 5, offset);
         }
         else
         {

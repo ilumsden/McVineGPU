@@ -1,3 +1,6 @@
+#ifndef RAY_HPP
+#define RAY_HPP
+
 struct Ray
 {
     Ray() { ; }
@@ -8,3 +11,5 @@ struct Ray
     double x, y, z;
     double vx, vy, vz;
 };
+
+#endif
