@@ -18,12 +18,12 @@ __global__ void initArray(float *data, int size, const float val)
  * It is a CUDA version of the intersectRectangle function from ArrowIntersector.cc
  * in McVine (mcvine/packages/mccomposite/lib/geometry/visitors/ArrowIntersector.cc).
  */
-__device__ void calculateTime(float* ts, float* pts,
-                              float x, float y, float z, float zdiff,
-                              float va, float vb, float vc, 
-                              const float amin, const float amax,
-                              const float bmin, const float bmax,
-                              const int key, const int off1, int &off2)
+__device__ void intersectRectangle(float* ts, float* pts,
+                                   float x, float y, float z, float zdiff,
+                                   float va, float vb, float vc, 
+                                   const float amin, const float amax,
+                                   const float bmin, const float bmax,
+                                   const int key, const int off1, int &off2)
 {
     z -= zdiff;
     float t = (0-z)/vc;
@@ -83,8 +83,8 @@ __global__ void intersectBox(float* rx, float* ry, float* rz,
         int offset = 0;
         if (vz[index] != 0)
         {
-            calculateTime(ts, pts, rx[index], ry[index], rz[index], zmax, vx[index], vy[index], vz[index], xmin, xmax, ymin, ymax, 0, 0, offset);
-            calculateTime(ts, pts, rx[index], ry[index], rz[index], zmin, vx[index], vy[index], vz[index], xmin, xmax, ymin, ymax, 0, 1, offset);
+            intersectRectangle(ts, pts, rx[index], ry[index], rz[index], zmax, vx[index], vy[index], vz[index], xmin, xmax, ymin, ymax, 0, 0, offset);
+            intersectRectangle(ts, pts, rx[index], ry[index], rz[index], zmin, vx[index], vy[index], vz[index], xmin, xmax, ymin, ymax, 0, 1, offset);
         }
         else
         {
@@ -93,8 +93,8 @@ __global__ void intersectBox(float* rx, float* ry, float* rz,
         }
         if (vx[index] != 0)
         {
-            calculateTime(ts, pts, ry[index], rz[index], rx[index], xmax, vy[index], vz[index], vx[index], ymin, ymax, zmin, zmax, 1, 2, offset);
-            calculateTime(ts, pts, ry[index], rz[index], rx[index], xmin, vy[index], vz[index], vx[index], ymin, ymax, zmin, zmax, 1, 3, offset);
+            intersectRectangle(ts, pts, ry[index], rz[index], rx[index], xmax, vy[index], vz[index], vx[index], ymin, ymax, zmin, zmax, 1, 2, offset);
+            intersectRectangle(ts, pts, ry[index], rz[index], rx[index], xmin, vy[index], vz[index], vx[index], ymin, ymax, zmin, zmax, 1, 3, offset);
         }
         else
         {
@@ -103,8 +103,8 @@ __global__ void intersectBox(float* rx, float* ry, float* rz,
         }
         if (vy[index] != 0)
         {
-            calculateTime(ts, pts, rz[index], rx[index], ry[index], ymax, vz[index], vx[index], vy[index], zmin, zmax, xmin, xmax, 2, 4, offset);
-            calculateTime(ts, pts, rz[index], rx[index], ry[index], ymin, vz[index], vx[index], vy[index], zmin, zmax, xmin, xmax, 2, 5, offset);
+            intersectRectangle(ts, pts, rz[index], rx[index], ry[index], ymax, vz[index], vx[index], vy[index], zmin, zmax, xmin, xmax, 2, 4, offset);
+            intersectRectangle(ts, pts, rz[index], rx[index], ry[index], ymin, vz[index], vx[index], vy[index], zmin, zmax, xmin, xmax, 2, 5, offset);
         }
         else
         {
@@ -113,6 +113,8 @@ __global__ void intersectBox(float* rx, float* ry, float* rz,
         }
     }
 }
+
+
 
 __global__ void simplifyTimes(const float *times, const int N, const int groupSize, float *simp)
 {

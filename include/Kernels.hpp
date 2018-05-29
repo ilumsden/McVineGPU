@@ -6,12 +6,12 @@
 
 __global__ void initArray(float* data, const int size, const float val);
 
-__device__ void calculateTime(float* ts, float* pts, 
-                              float x, float y, float z, float zdiff,
-                              float va, float vb, float vc,
-                              const float amin, const float amax,
-                              const float bmin, const float bmax,
-                              const int key, const int off1, int &off2);
+__device__ void intersectRectangle(float* ts, float* pts, 
+                                   float x, float y, float z, float zdiff,
+                                   float va, float vb, float vc,
+                                   const float amin, const float amax,
+                                   const float bmin, const float bmax,
+                                   const int key, const int off1, int &off2);
 
 __global__ void intersectBox(float* rx, float* ry, float* rz,
                              float* vx, float* vy, float* vz,
