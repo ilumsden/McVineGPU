@@ -151,8 +151,7 @@ __device__ void randCoord(float* inters, float* time , float *sx, float *sy, flo
     *sz = inters[2] + mz*randt;
 }
 
-__global__ void calcScatteringSites(const float X, const float Y, const float Z,
-                                    float* ts, float* int_pts, float* pos, curandState *state, const int N)
+__global__ void calcScatteringSites(float* ts, float* int_pts, float* pos, curandState *state, const int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N)
@@ -174,11 +173,11 @@ __global__ void calcScatteringSites(const float X, const float Y, const float Z,
             }
             randCoord(&(int_pts[6*index]), &(ts[2*index]), &(pos[3*index + 0]), &(pos[3*index + 1]), &(pos[3*index + 2]), state);
         }
-        else
+        /*else
         {
             pos[3*index + 0] = 20 * X;
             pos[3*index + 1] = 20 * Y;
             pos[3*index + 2] = 20 * Z;
-        }
+        }*/
     }
 }

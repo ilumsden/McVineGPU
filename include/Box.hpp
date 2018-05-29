@@ -7,10 +7,11 @@
 class Box : public Shape
 {
     public:
-        Box() { ; }
+        Box() { type = "Box"; }
         Box(const double a, const double b, const double c);
         Box(const double amin, const double bmin, const double cmin,
             const double amax, const double bmax, const double cmax);
+        ~Box() { ; }
         //virtual void accept(UnaryVisitor &v) override;
         virtual void intersect(float *d_rx, float *d_ry, float *d_rz,
                                float *d_vx, float *d_vy, float *d_vz,

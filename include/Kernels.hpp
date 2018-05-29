@@ -26,8 +26,7 @@ __global__ void prepRand(curandState *state, int seed);
 
 __device__ void randCoord(float* inters, float* time, float *sx, float *sy, float *sz, curandState *state);
 
-__global__ void calcScatteringSites(const float X, const float Y, const float Z,
-                                    float* ts, float* int_pts, 
+__global__ void calcScatteringSites(float* ts, float* int_pts, 
                                     float* pos, curandState *state, const int N);
 
 #endif
