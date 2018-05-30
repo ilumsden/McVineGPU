@@ -180,7 +180,7 @@ void CudaDriver::findScatteringSites(//std::shared_ptr<AbstractShape> &b,
     // Opens a file stream and prints the 
     // relevant data to scatteringSites.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
-    std::fstream fout;
+    /*std::fstream fout;
     fout.open("scatteringSites.txt", std::ios::out);
     if (!fout.is_open())
     {
@@ -206,7 +206,7 @@ void CudaDriver::findScatteringSites(//std::shared_ptr<AbstractShape> &b,
 << std::fixed << std::setprecision(5) << std::setw(8) << std::right << sites[i] << "\n";
         }
     }
-    fout.close();
+    fout.close();*/
     // Frees the device memory allocated above.
     cudaFree(ts);
     cudaFree(inters);
