@@ -11,6 +11,7 @@ struct Box : public AbstractShape
     Box(const double a, const double b, const double c)
     {
         X=a; Y=b; Z=c;
+        type = "Box";
     }
 
     ~Box() { ; }
