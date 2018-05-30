@@ -22,7 +22,8 @@ int main(int argc, char **argv)
         blockSize = std::stoi(sizeFlag.substr(12));
     }
     auto start = std::chrono::steady_clock::now();
-    std::shared_ptr<AbstractShape> b = std::make_shared<Box>(2, 2, 2);
+    //std::shared_ptr<AbstractShape> b = std::make_shared<Box>(2, 2, 2);
+    std::shared_ptr<AbstractShape> b = std::make_shared<Cylinder>(2, 5);
     std::vector< std::shared_ptr<Ray> > rays;
     /*rays.push_back(std::make_shared<Ray>(5, 5, 5, -1.2, -1.2, -1));
     rays.push_back(std::make_shared<Ray>(3, 5, 6, -0.5, -0.6, -0.75));

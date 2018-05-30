@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "Box.hpp"
+#include "Cylinder.hpp"
 #include "Ray.hpp"
 
 class CudaDriver

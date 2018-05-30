@@ -29,7 +29,7 @@ __device__ void intersectRectangle(float* ts, float* pts,
     float r1x = x+va*t; 
     float r1y = y+vb*t;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (fabs(r1x) < (A/2) && fabs(r1y) < (B/2))
+    if (fabsf(r1x) < (A/2) && fabsf(r1y) < (B/2))
     {
         float ix, iy, iz;
         if (key == 0)
@@ -62,6 +62,131 @@ __device__ void intersectRectangle(float* ts, float* pts,
     else
     {
         ts[off1 + index*6] = -1;
+    }
+}
+
+__device__ void intersectCylinderSide(float *ts, float *pts,
+                                      float x, float y, float z,
+                                      float vx, float vy, float vz,
+                                      const float r, const float h, 
+                                      int &offset)
+{
+    float a = vx*vx + vy*vy;
+    float b = x*vx + y*vy;
+    float c = x*x+y*y - r*r;
+    float k = b*b - a*c;
+    float t;
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (k < 0)
+    {
+        ts[4*index + 2] = -1;
+        ts[4*index + 3] = -1;
+        return;
+    }
+    else if (k == 0)
+    {
+        t = -b/a;
+        ts[4*index + 3] = -1;
+        if (fabsf(z+vz*t) < h/2)
+        {
+            ts[4*index + 2] = t;
+            if (offset == 0 || offset == 3)
+            {
+                pts[6*index + offset] = x+vx*t;
+                pts[6*index + offset + 1] = y+vy*t;
+                pts[6*index + offset + 2] = z+vz*t;
+                offset += 3;
+            }
+        }
+        else
+        {
+            ts[4*index + 2] = -1;
+        }
+    }
+    __syncthreads();
+    int i = 2;
+    k = sqrtf(k);
+    t = (-b+k)/a;
+    if (fabsf(z+vz*t) < h/2)
+    {
+        ts[4*index + i] = t;
+        i++;
+        if (offset == 0 || offset == 3)
+        {
+            pts[6*index + offset] = x+vx*t;
+            pts[6*index + offset + 1] = y+vy*t;
+            pts[6*index + offset + 2] = z+vz*t;
+            offset += 3;
+        }
+    }
+    t = (-b-k)/a;
+    if (fabsf(z+vz*t) < h/2)
+    {
+        ts[4*index + i] = t;
+        i++;
+        if (offset == 0 || offset == 3)
+        {
+            pts[6*index + offset] = x+vx*t;
+            pts[6*index + offset + 1] = y+vy*t;
+            pts[6*index + offset + 2] = z+vz*t;
+            offset += 3;
+        }
+    }
+    if (i < 4)
+    {
+        for (int j = i; j < 4; j++)
+        {
+            ts[4*index + j] = -1;
+        }
+    }
+    __syncthreads();
+}
+
+__device__ void intersectCylinderTopBottom(float *ts, float *pts,
+                                           float x, float y, float z,
+                                           float vx, float vy, float vz,
+                                           const float r, const float h,
+                                           int &offset)
+{
+    float r2 = r*r;
+    float hh = h/2;
+    float x1, y1;
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    float t = (hh-z)/vz;
+    x1 = x + vx*t;
+    y1 = y + vy*t;
+    if (x1*x1 + y1*y1 <= r2)
+    {
+        ts[4*index] = t;
+        if (offset == 0 || offset == 3)
+        {
+            pts[6*index + offset] = x1;
+            pts[6*index + offset + 1] = y1;
+            pts[6*index + offset + 2] = hh;
+            offset += 3;
+        }
+    }
+    else
+    {
+        ts[4*index] = -1;
+    }
+    t = (-hh-z)/vz;
+    x1 = x + vx*t;
+    y1 = y + vy*t;
+    if (x1*x1 + y1*y1 <= r2)
+    {
+        ts[4*index + 1] = t;
+        if (offset == 0 || offset == 3)
+        {
+            pts[6*index + offset] = x1;
+            pts[6*index + offset + 1] = y1;
+            pts[6*index + offset + 2] = -hh;
+            offset += 3;
+        }
+    }
+    else
+    {
+        ts[4*index + 1] = -1;
     }
 }
 
@@ -108,6 +233,20 @@ __global__ void intersectBox(float* rx, float* ry, float* rz,
             ts[index*6 + 4] = -1;
             ts[index*6 + 5] = -1;
         }
+    }
+}
+
+__global__ void intersectCylinder(float *rx, float *ry, float *rz,
+                                  float *vx, float *vy, float *vz,
+                                  const float r, const float h,
+                                  const int N, float *ts, float *pts)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < N)
+    {
+        int offset = 0;
+        intersectCylinderTopBottom(ts, pts, rx[index], ry[index], rz[index], vx[index], vy[index], vz[index], r, h, offset);
+        intersectCylinderSide(ts, pts, rx[index], ry[index], rz[index], vx[index], vy[index], vz[index], r, h, offset);
     }
 }
 

@@ -12,10 +12,27 @@ __device__ void intersectRectangle(float* ts, float* pts,
                                    const float A, const float B,
                                    const int key, const int off1, int &off2);
 
+__device__ void intersectCylinderSide(float *ts, float *pts,
+                                      float x, float y, float z,
+                                      float vx, float vy, float vz,
+                                      const float r, const float h,
+                                      int &offset);
+
+__device__ void intersectCylinderTopBottom(float *ts, float *pts,
+                                          float x, float y, float z,
+                                          float vx, float vy, float vz,
+                                          const float r, const float h,
+                                          int &offset);
+
 __global__ void intersectBox(float* rx, float* ry, float* rz,
                              float* vx, float* vy, float* vz,
                              const float X, const float Y, const float Z,
                              const int N, float* ts, float* pts);
+
+__global__ void intersectCylinder(float *rx, float *ry, float *rz,
+                                  float *vx, float *vy, float *vz,
+                                  const float r, const float h,
+                                  const int N, float *ts, float *pts);
 
 __global__ void simplifyTimes(const float* ts, const int N, const int groupSize, float* simp);
 
