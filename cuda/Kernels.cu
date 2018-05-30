@@ -21,8 +21,7 @@ __global__ void initArray(float *data, int size, const float val)
 __device__ void intersectRectangle(float* ts, float* pts,
                                    float x, float y, float z, float zdiff,
                                    float va, float vb, float vc, 
-                                   const float amin, const float amax,
-                                   const float bmin, const float bmax,
+                                   const float A, const float B,
                                    const int key, const int off1, int &off2)
 {
     z -= zdiff;
@@ -30,7 +29,7 @@ __device__ void intersectRectangle(float* ts, float* pts,
     float r1x = x+va*t; 
     float r1y = y+vb*t;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if ((r1x < amax && r1x > amin) && (r1y < bmax && r1y > bmin))
+    if (fabs(r1x) < (A/2) && fabs(r1y) < (B/2))
     {
         float ix, iy, iz;
         if (key == 0)
@@ -72,9 +71,7 @@ __device__ void intersectRectangle(float* ts, float* pts,
  */
 __global__ void intersectBox(float* rx, float* ry, float* rz,
                              float* vx, float* vy, float* vz,
-                             const float xmin, const float xmax,
-                             const float ymin, const float ymax,
-                             const float zmin, const float zmax,
+                             const float X, const float Y, const float Z, 
                              const int N, float* ts, float* pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -83,8 +80,8 @@ __global__ void intersectBox(float* rx, float* ry, float* rz,
         int offset = 0;
         if (vz[index] != 0)
         {
-            intersectRectangle(ts, pts, rx[index], ry[index], rz[index], zmax, vx[index], vy[index], vz[index], xmin, xmax, ymin, ymax, 0, 0, offset);
-            intersectRectangle(ts, pts, rx[index], ry[index], rz[index], zmin, vx[index], vy[index], vz[index], xmin, xmax, ymin, ymax, 0, 1, offset);
+            intersectRectangle(ts, pts, rx[index], ry[index], rz[index], Z/2, vx[index], vy[index], vz[index], X, Y, 0, 0, offset);
+            intersectRectangle(ts, pts, rx[index], ry[index], rz[index], -Z/2, vx[index], vy[index], vz[index], X, Y, 0, 1, offset);
         }
         else
         {
@@ -93,8 +90,8 @@ __global__ void intersectBox(float* rx, float* ry, float* rz,
         }
         if (vx[index] != 0)
         {
-            intersectRectangle(ts, pts, ry[index], rz[index], rx[index], xmax, vy[index], vz[index], vx[index], ymin, ymax, zmin, zmax, 1, 2, offset);
-            intersectRectangle(ts, pts, ry[index], rz[index], rx[index], xmin, vy[index], vz[index], vx[index], ymin, ymax, zmin, zmax, 1, 3, offset);
+            intersectRectangle(ts, pts, ry[index], rz[index], rx[index], X/2, vy[index], vz[index], vx[index], Y, Z, 1, 2, offset);
+            intersectRectangle(ts, pts, ry[index], rz[index], rx[index], -X/2, vy[index], vz[index], vx[index], Y, Z, 1, 3, offset);
         }
         else
         {
@@ -103,8 +100,8 @@ __global__ void intersectBox(float* rx, float* ry, float* rz,
         }
         if (vy[index] != 0)
         {
-            intersectRectangle(ts, pts, rz[index], rx[index], ry[index], ymax, vz[index], vx[index], vy[index], zmin, zmax, xmin, xmax, 2, 4, offset);
-            intersectRectangle(ts, pts, rz[index], rx[index], ry[index], ymin, vz[index], vx[index], vy[index], zmin, zmax, xmin, xmax, 2, 5, offset);
+            intersectRectangle(ts, pts, rz[index], rx[index], ry[index], Y/2, vz[index], vx[index], vy[index], Z, X, 2, 4, offset);
+            intersectRectangle(ts, pts, rz[index], rx[index], ry[index], -Y/2, vz[index], vx[index], vy[index], Z, X, 2, 5, offset);
         }
         else
         {

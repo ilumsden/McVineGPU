@@ -4,33 +4,6 @@
 #include "Error.hpp"
 #include "Kernels.hpp"
 
-Box::Box(const double a, const double b, const double c)
-{
-    x = a;
-    y = b;
-    z = c;
-    xmin = -(a/2);
-    xmax = a/2;
-    ymin = -(b/2);
-    ymax = b/2;
-    zmin = -(c/2);
-    zmax = c/2;
-}
-
-Box::Box(const double amin, const double bmin, const double cmin,
-         const double amax, const double bmax, const double cmax)
-{
-    xmin = amin;
-    ymin = bmin;
-    zmin = cmin;
-    xmax = amax;
-    ymax = bmax;
-    zmax = cmax;
-    x = amax - amin;
-    y = bmax - bmin;
-    z = cmax - cmin;
-}
-
 /*void Box::accept(UnaryVisitor &v)
 {
     throw "This function is not yet implemented.\n";
@@ -57,9 +30,7 @@ void Box::intersect(float *d_rx, float *d_ry, float *d_rz,
     int_coords.resize(6*N);
     intersectBox<<<numBlocks, blockSize>>>(d_rx, d_ry, d_rz,
                                            d_vx, d_vy, d_vz,
-                                           xmin, xmax,
-                                           ymin, ymax,
-                                           zmin, zmax,
+                                           X, Y, Z,
                                            N, device_time, intersect);
     simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 6, simp_times);
     CudaErrorNoCode();

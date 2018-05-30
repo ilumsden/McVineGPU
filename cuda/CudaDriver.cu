@@ -83,7 +83,7 @@ CudaDriver::~CudaDriver()
  * `intersectBlock` function from Kernels.cu, 
  * calling said function, and parsing the returned data.
  */
-void CudaDriver::handleRectIntersect(std::shared_ptr<Shape> &b, 
+void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b, 
                                      std::vector<float> &host_time,
                                      std::vector<float> &int_coords)
 {
@@ -129,7 +129,7 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<Shape> &b,
 /* This function is the host driver function for
  * determining the scattering sites for the neutrons.
  */
-void CudaDriver::findScatteringSites(//std::shared_ptr<Shape> &b,
+void CudaDriver::findScatteringSites(//std::shared_ptr<AbstractShape> &b,
                                      const std::vector<float> &int_times, 
                                      const std::vector<float> &int_coords,
                                      std::vector<float> &sites)
@@ -180,7 +180,7 @@ void CudaDriver::findScatteringSites(//std::shared_ptr<Shape> &b,
     // Opens a file stream and prints the 
     // relevant data to scatteringSites.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
-    std::fstream fout;
+    /*std::fstream fout;
     fout.open("scatteringSites.txt", std::ios::out);
     if (!fout.is_open())
     {
@@ -206,7 +206,7 @@ void CudaDriver::findScatteringSites(//std::shared_ptr<Shape> &b,
 << std::fixed << std::setprecision(5) << std::setw(8) << std::right << sites[i] << "\n";
         }
     }
-    fout.close();
+    fout.close();*/
     // Frees the device memory allocated above.
     cudaFree(ts);
     cudaFree(inters);
@@ -216,7 +216,7 @@ void CudaDriver::findScatteringSites(//std::shared_ptr<Shape> &b,
 }
 
 // This function is the driver for the GPU calculations.
-void CudaDriver::runCalculations(std::shared_ptr<Shape> &b)
+void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
 {
     std::vector<float> int_times;
     std::vector<float> int_coords;

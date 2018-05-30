@@ -16,14 +16,14 @@ class CudaDriver
 
         ~CudaDriver();
 
-        void runCalculations(std::shared_ptr<Shape> &b);
+        void runCalculations(std::shared_ptr<AbstractShape> &b);
     private:
 
-        void handleRectIntersect(std::shared_ptr<Shape> &b, 
+        void handleRectIntersect(std::shared_ptr<AbstractShape> &b, 
                                  std::vector<float> &host_time, 
                                  std::vector<float> &int_coords);
 
-        void findScatteringSites(//std::shared_ptr<Shape> &b,
+        void findScatteringSites(//std::shared_ptr<AbstractShape> &b,
                                  const std::vector<float> &int_times, 
                                  const std::vector<float> &int_coords,
                                  std::vector<float> &sites);

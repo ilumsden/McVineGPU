@@ -22,7 +22,7 @@ int main(int argc, char **argv)
         blockSize = std::stoi(sizeFlag.substr(12));
     }
     auto start = std::chrono::steady_clock::now();
-    std::shared_ptr<Shape> b = std::make_shared<Box>(2, 2, 2);
+    std::shared_ptr<AbstractShape> b = std::make_shared<Box>(2, 2, 2);
     std::vector< std::shared_ptr<Ray> > rays;
     /*rays.push_back(std::make_shared<Ray>(5, 5, 5, -1.2, -1.2, -1));
     rays.push_back(std::make_shared<Ray>(3, 5, 6, -0.5, -0.6, -0.75));
@@ -32,7 +32,7 @@ int main(int argc, char **argv)
     std::uniform_real_distribution<double> vel(0, 1);
     printf("Starting data creation\n");
     auto createStart = std::chrono::steady_clock::now();
-    for (int i = 0; i < 1000000; i++)
+    for (int i = 0; i < 100000000; i++)
     {
         printf("i = %i\n", i);
         std::shared_ptr<Ray> tmp = std::make_shared<Ray>(norm(re), norm(re), norm(re));
