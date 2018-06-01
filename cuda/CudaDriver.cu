@@ -99,6 +99,7 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b,
     }
     for (int i = 0; i < (int)(int_coords.size()); i++)
     {
+        //printf("print i = %i\n", i);
         if (i % 6 == 0)
         {
             int ind = i/6;
@@ -225,10 +226,10 @@ void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("handleRectIntersect: %f\n", time);
-    std::vector<float> scattering_sites;
+    /*std::vector<float> scattering_sites;
     start = std::chrono::steady_clock::now();
     findScatteringSites(int_times, int_coords, scattering_sites);
     stop = std::chrono::steady_clock::now();
     time = std::chrono::duration<double>(stop - start).count();
-    printf("findScatteringSites: %f\n", time);
+    printf("findScatteringSites: %f\n", time);*/
 }

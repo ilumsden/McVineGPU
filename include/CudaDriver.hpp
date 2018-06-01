@@ -8,6 +8,7 @@
 
 #include "Box.hpp"
 #include "Cylinder.hpp"
+#include "Pyramid.hpp"
 #include "Ray.hpp"
 
 class CudaDriver

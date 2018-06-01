@@ -10,7 +10,8 @@ __device__ void intersectRectangle(float* ts, float* pts,
                                    float x, float y, float z, float zdiff,
                                    float va, float vb, float vc,
                                    const float A, const float B,
-                                   const int key, const int off1, int &off2);
+                                   const int key, const int groupSize,
+                                   const int off1, int &off2);
 
 __device__ void intersectCylinderSide(float *ts, float *pts,
                                       float x, float y, float z,
@@ -19,10 +20,18 @@ __device__ void intersectCylinderSide(float *ts, float *pts,
                                       int &offset);
 
 __device__ void intersectCylinderTopBottom(float *ts, float *pts,
-                                          float x, float y, float z,
-                                          float vx, float vy, float vz,
-                                          const float r, const float h,
-                                          int &offset);
+                                           float x, float y, float z,
+                                           float vx, float vy, float vz,
+                                           const float r, const float h,
+                                           int &offset);
+
+__device__ void intersectTriangle(float *ts, float *pts,
+                                  const float x, const float y, const float z,
+                                  const float vx, const float vy, const float vz,
+                                  const float aX, const float aY, const float aZ,
+                                  const float bX, const float bY, const float bZ,
+                                  const float cX, const float cY, const float cZ,
+                                  const int off1, int &off2);
 
 __global__ void intersectBox(float* rx, float* ry, float* rz,
                              float* vx, float* vy, float* vz,
@@ -33,6 +42,11 @@ __global__ void intersectCylinder(float *rx, float *ry, float *rz,
                                   float *vx, float *vy, float *vz,
                                   const float r, const float h,
                                   const int N, float *ts, float *pts);
+
+__global__ void intersectPyramid(float *rx, float *ry, float *rz,
+                                 float *vx, float *vy, float *vz,
+                                 const float X, const float Y, const float H,
+                                 const int N, float *ts, float *pts);
 
 __global__ void simplifyTimes(const float* ts, const int N, const int groupSize, float* simp);
 
