@@ -37,7 +37,7 @@ int main(int argc, char **argv)
     std::uniform_real_distribution<double> vel(0, 1);
     printf("Starting data creation\n");
     auto createStart = std::chrono::steady_clock::now();
-    for (int i = 0; i < 1000000; i++)
+    for (int i = 0; i < 100000000; i++)
     {
         printf("i = %i\n", i);
         std::shared_ptr<Ray> tmp = std::make_shared<Ray>(x(re), y(re), z(re));

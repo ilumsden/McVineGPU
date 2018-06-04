@@ -6,6 +6,13 @@
 
 __global__ void initArray(float* data, const int size, const float val);
 
+__device__ float dot(float ax, float ay, float az,
+                     float bx, float by, float bz);
+
+__device__ void cross(float ax, float ay, float az,
+                      float bx, float by, float bz,
+                      float *cx, float *cy, float *cz);
+
 __device__ void intersectRectangle(float* ts, float* pts, 
                                    float x, float y, float z, float zdiff,
                                    float va, float vb, float vc,

@@ -12,6 +12,22 @@ __global__ void initArray(float *data, int size, const float val)
     }
 }
 
+__device__ float dot(float ax, float ay, float az,
+                     float bx, float by, float bz)
+{
+    return ax*bx + ay*by + az*bz;
+}
+
+__device__ void cross(float ax, float ay, float az,
+                      float bx, float by, float bz,
+                      float *cx, float *cy, float *cz)
+{
+    *cx = ay*bz - az*by;
+    *cy = az*bx - ax*bz;
+    *cz = ax*by - by*bx;
+    return;
+}
+
 /* This is a device-only helper function for determining the time
  * it takes a ray to intersect the rectangle specified by the `intersectRectangle`
  * function.
@@ -204,32 +220,34 @@ __device__ void intersectTriangle(float *ts, float *pts,
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     float abX = bX - aX, abY = bY - aY, abZ = bZ - aZ;
     float acX = cX - aX, acY = cY - aY, acZ = cZ - aZ;
-    float nX = abY*acZ-abZ*acY, nY = abZ*acX-abX*acZ, nZ = abX*acY-abY*acX;
+    float nX, nY, nZ;
+    cross(abX, abY, abZ, acX, acY, acZ, &nX, &nY, &nZ);
     float nLength = fabsf(nX)*fabsf(nX)+fabsf(nY)*fabsf(nY)+fabsf(nZ)*fabsf(nZ);
     nLength = sqrtf(nLength);
     nX /= nLength; nY /= nLength; nZ /= nLength;
-    float d = nX*aX+nY*aY+nZ*aZ;
-    float v_p = nX*vx+nY*vy+nZ*vz;
+    float d = dot(nX, nY, nZ, aX, aY, aZ);
+    float v_p = dot(nX, nY, nZ, vx, vy, vz);
     if (fabsf(v_p) < 1e-10)
     {
         ts[5*index + off1] = -1;
         return;
     }
-    float r_p = nX*x+nY*y+nZ*z;
-    //float t = (d - (nX*x+nY*y+nZ*z))/(nX*vx+nY*vy+nZ*vz);
+    float r_p = dot(nX, nY, nZ, x, y, z);
     float t = (d - r_p)/v_p;
     //printf("index = %i\n    abX = %f abY = %f abZ = %f\n    acX = %f acY = %f acZ = %f\n    nX = %f nY = %f nZ = %f\n    d = %f r_p = %f v_p = %f\n    t = %f\n", index, abX, abY, abZ, acX, acY, acZ, nX, nY, nZ, d, r_p, v_p, t);
     float pX = x + vx*t, pY = y + vy*t, pZ = z + vz*t;
     float apX = pX - aX, apY = pY - aY, apZ = pZ - aZ;
-    float ac_X = nY*acZ-nZ*acY, ac_Y = nZ*acX-nX*acZ, ac_Z = nX*acY-nY*acX;
-    float c1 = (apX*ac_X+apY*ac_Y+apZ*ac_Z)/(abX*ac_X+abY*ac_Y+abZ*ac_Z);
+    float ncX, ncY, ncZ;
+    cross(nX, nY, nZ, acX, acY, acZ, &ncX, &ncY, &ncZ);
+    float c1 = dot(apX, apY, apZ, ncX, ncY, ncZ)/dot(abX, abY, abZ, ncX, ncY, ncZ);
     if (c1 < 0)
     {
         ts[5*index + off1] = -1;
         return;
     }
-    float ab_X = nY*abZ-nZ*abY, ab_Y = nZ*abX-nX*abZ, ab_Z = nX*abY-nY*abX;
-    float c2 = (apX*ab_X+apY*ab_Y+apZ*ab_Z)/(acX*ab_X+acY*ab_Y+acZ*ab_Z);
+    float nbX, nbY, nbZ;
+    cross(nX, nY, nZ, abX, abY, abZ, &nbX, &nbY, &nbZ);
+    float c2 = dot(apX, apY, apZ, nbX, nbY, nbZ)/dot(acX, acY, acZ, nbX, nbY, nbZ);
     if (c2 < 0)
     {
         ts[5*index + off1] = -1;
@@ -242,13 +260,13 @@ __device__ void intersectTriangle(float *ts, float *pts,
     }
     // Set time to actual value and record pX, pY, and pZ as int pts.
     // ascii(T) = 84
-    printf("index = %i    time = %f\n", index, t);
     ts[5*index + off1] = t + 84;
     if (off2 == 0 || off2 == 3)
     {
         pts[6*index + off2] = pX;
         pts[6*index + off2 + 1] = pY;
         pts[6*index + off2 + 2] = pZ;
+        //printf("index = %i: time = %f\n    x = %f y = %f z = %f\n    vx = %f vy = %f vz = %f\n    pX = %f pY = %f pZ = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n", index, t, x, y, z, vx, vy, vz, pX, pY, pZ, 6*index+off2, pts[6*index + off2], 6*index+off2+1, pts[6*index + off2+1], 6*index+off2+2, pts[6*index + off2+2]);
         off2 += 3;
         //printf("Triangle: index = %i    off2 = %i\n", index, off2);
     }
@@ -349,6 +367,7 @@ __global__ void intersectPyramid(float *rx, float *ry, float *rz,
                           vz[index], vy[index], vz[index],
                           0, 0, 0, -X/2, Y/2, -H, X/2, Y/2, -H,
                           4, offset);
+        //printf("index = %i:\n    ts[%i] = %f ts[%i] = %f ts[%i] = %f ts[%i] = %f ts[%i] = %f\n    rx[%i] = %f ry[%i] = %f rz[%i] = %f\n    vx[%i] = %f vy[%i] = %f vz[%i] = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n", index, 5*index, ts[5*index], 5*index+1, ts[5*index+1], 5*index+2, ts[5*index+2], 5*index+3, ts[5*index+3], 5*index+4, ts[5*index+4], index, rx[index], index, ry[index], index, rz[index], index, vx[index], index, vy[index], index, vz[index], 6*index, pts[6*index], 6*index+1, pts[6*index+1], 6*index+2, pts[6*index+2], 6*index+3, pts[6*index+3], 6*index+4, pts[6*index+4], 6*index+5, pts[6*index+5]);
     }
 }
 
