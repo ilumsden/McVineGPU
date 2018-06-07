@@ -274,6 +274,43 @@ __device__ void intersectTriangle(float *ts, float *pts,
     return;
 }
 
+/*__device__ void calculateQuadCoef(float x, float vx, float vy, float vz,
+                                  float dist, float &disc,
+                                  float &a, float &b, float &c)
+{
+    a = 1 + (vy/vx)*(vy/vx) + (vz/vx)*(vz/vx);
+    b = -2*(1 + ((x*vy*vy)/(vx*vx)) + ((x*vz*vz)/(vx*vx)));
+    c = x*x + ((x*vy)/vx)*((x*vy)/vx) + ((x*vz)/vx)*((x*vz)/vx);
+    c -= dist*dist;
+    disc = b*b - 4*a*c;
+    return;
+}*/
+
+__device__ bool solveQuadratic(float a, float b, float c, float &x0, float &x1)
+{
+    float discr = b*b - 4*a*c;
+    if (discr < 0)
+    {
+        return false;
+    }
+    else
+    {
+        // Done to avoid "catastrophic cancellation"
+        float q = (b > 0) ? 
+                  (-0.5 * (b + sqrtf(discr))) :
+                  (-0.5 * (b - sqrtf(discr)));
+        x0 = q/a;
+        x1 = c/q;
+    }
+    if (x0 > x1)
+    {
+        float tmp = x0;
+        x0 = x1;
+        x1 = tmp;
+    }
+    return true;
+}
+
 /* This is a global CUDA function for controlling the calculation of intersection
  * times. It is a CUDA version of the visit function from ArrowIntersector.cc in
  * McVine (mcvine/packages/mccomposite/lib/geometry/visitors/ArrowIntersector.cc).
@@ -368,6 +405,176 @@ __global__ void intersectPyramid(float *rx, float *ry, float *rz,
                           0, 0, 0, -X/2, Y/2, -H, X/2, Y/2, -H,
                           4, offset);
         //printf("index = %i:\n    ts[%i] = %f ts[%i] = %f ts[%i] = %f ts[%i] = %f ts[%i] = %f\n    rx[%i] = %f ry[%i] = %f rz[%i] = %f\n    vx[%i] = %f vy[%i] = %f vz[%i] = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n", index, 5*index, ts[5*index], 5*index+1, ts[5*index+1], 5*index+2, ts[5*index+2], 5*index+3, ts[5*index+3], 5*index+4, ts[5*index+4], index, rx[index], index, ry[index], index, rz[index], index, vx[index], index, vy[index], index, vz[index], 6*index, pts[6*index], 6*index+1, pts[6*index+1], 6*index+2, pts[6*index+2], 6*index+3, pts[6*index+3], 6*index+4, pts[6*index+4], 6*index+5, pts[6*index+5]);
+    }
+}
+
+__global__ void intersectSphere(float *rx, float *ry, float *rz,
+                                float *vx, float *vy, float *vz,
+                                const float radius,
+                                const int N, float *ts, float *pts)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < N)
+    {
+        /*float rdotv = dot(rx[index], ry[index], rz[index], vx[index], vy[index], vz[index]);
+        float rvX, rvY, rvZ;
+        cross(rx[index], ry[index], rz[index], vx[index], vy[index], vz[index], &rvX, &rvY, &rvZ);
+        float v2 = dot(vx[index], vy[index], vz[index], vx[index], vy[index], vz[index]);
+        float rvDot = dot(rvX, rvY, rvZ, rvX, rvY, rvZ);
+        float b2m4ac = v2*radius*radius;
+        b2m4ac -= rvDot;
+        if (b2m4ac < 0)
+        {
+            ts[2*index] = -1;
+            ts[2*index + 1] = -1;
+            return;
+        }
+        float sqrt_b2m4ac = sqrtf(b2m4ac);
+        float d[2];
+        d[0] = -(rdotv + sqrt_b2m4ac) / v2;
+        d[1] = -(rdotv - sqrt_b2m4ac) / v2;
+        if (d[0] > d[1])
+        {
+            int tmp = d[0];
+            d[0] = d[1];
+            d[1] = tmp;
+        }
+        float x1, x2, X, Y, Z;
+        //float a, b, c, disc;
+        float t, t1, t2;*/
+        float a = dot(vx[index], vy[index], vz[index],
+                      vx[index], vy[index], vz[index]);
+        float b = 2 * dot(rx[index], ry[index], rz[index],
+                          vx[index], vy[index], vz[index]);
+        float c = dot(rx[index], ry[index], rz[index],
+                      rx[index], ry[index], rz[index]);
+        c -= radius*radius;
+        float t0, t1;
+        if (!solveQuadratic(a, b, c, t0, t1))
+        {
+            ts[2*index] = -1;
+            ts[2*index + 1] = -1;
+            return;
+        }
+        else
+        {
+            if (t0 < 0)
+            {
+                ts[2*index] = -1;
+            }
+            else
+            {
+                ts[2*index] = t0;
+                pts[6*index] = rx[index] + vx[index] * t0;
+                pts[6*index+1] = ry[index] + vy[index] * t0;
+                pts[6*index+2] = rz[index] + vz[index] * t0;
+            }
+            if (t1 < 0)
+            {
+                ts[2*index+1] = -1;
+            }
+            else
+            {
+                ts[2*index + 1] = t1;
+                pts[6*index+3] = rx[index] + vx[index] * t1;
+                pts[6*index+4] = ry[index] + vy[index] * t1;
+                pts[6*index+5] = rz[index] + vz[index] * t1;
+            }
+        }
+        /*for (int i = 0; i < 6; i += 3)
+        {
+            calculateQuadCoef(rx[index], vx[index], vy[index], vz[index],
+                              d[i/3], disc, a, b, c);
+            if (disc < 0)
+            {
+                ts[2*index] = -1;
+                ts[2*index + 1] = -1;
+                return;
+            }
+            x1 = (-b + sqrtf(disc))/(2*a);
+            x2 = (-b - sqrtf(disc))/(2*a);
+            t1 = (x1 - rx[index])/vx[index];
+            t2 = (x2 - rx[index])/vx[index];
+            if (t1 < 0 && t2 < 0)
+            {
+                ts[2*index] = -1;
+                ts[2*index + 1] = -1;
+                return;
+            }
+            else
+            {
+                if (t1 < 0 && t2 >= 0)
+                {
+                    printf("t = t2 = %f X = x2 = %f\n", t2, x2);
+                    t = t2;
+                    X = x2;
+                }
+                else if (t1 >= 0 && t2 < 0)
+                {
+                    printf("t = t1 = %f X = x1 = %f\n", t1, x1);
+                    t = t1;
+                    X = x1;
+                }
+                else
+                {
+                    // This printf is temporary. It will be replaced later.
+                    printf("Both times for X were positive or 0.\n    Time 1 = %f Time 2 = %f\n", t1, t2);
+                    ts[2*index] = 1789;
+                    ts[2*index+1] = 1789;
+                    pts[6*index] = 1789;
+                    pts[6*index+1] = 1789;
+                    pts[6*index+2] = 1789;
+                    pts[6*index+3] = 1789;
+                    pts[6*index+4] = 1789;
+                    pts[6*index+5] = 1789;
+                    return;
+                }
+            }
+            __syncthreads();
+            Y = ry[index] + t*vy[index];
+            Z = rz[index] + t*vz[index];
+            ts[2*index + (i/3)] = t;
+            pts[6*index + i] = X;
+            pts[6*index + i+1] = Y;
+            pts[6*index + i+2] = Z;
+        }*/
+        __syncthreads();
+        /*calculateQuadCoef(ry[index], vy[index], vx[index], vz[index],
+                          d1, disc, a, b, c);
+        if (disc < 0)
+        {
+            ts[2*index] = -1;
+            ts[2*index + 1] = -1;
+            return;
+        }
+        y1 = (-b + sqrtf(disc))/(2*a);
+        y2 = (-b - sqrtf(disc))/(2*a);
+        t1 = (y1 - ry[index])/vy[index];
+        t2 = (y2 - ry[index])/vy[index];
+        if ((t1 < 0 && t2 < 0) || (t1 != t && t2 != t));
+        {
+            ts[2*index] = -1;
+            ts[2*index + 1] = -1;
+            return;
+        }
+        calculateQuadCoef(rz[index], vz[index], vx[index], vy[index],
+                          d1, disc, a, b, c);
+        if (disc < 0)
+        {
+            ts[2*index] = -1;
+            ts[2*index + 1] = -1;
+            return;
+        }
+        z1 = (-b + sqrtf(disc))/(2*a);
+        z2 = (-b - sqrtf(disc))/(2*a);
+        t1 = (z1 - rz[index])/vz[index];
+        t2 = (z2 - rz[index])/vz[index];
+        if ((t1 < 0 && t2 < 0) || (t1 != t && t2 != t));
+        {
+            ts[2*index] = -1;
+            ts[2*index + 1] = -1;
+            return;
+        }*/
     }
 }
 

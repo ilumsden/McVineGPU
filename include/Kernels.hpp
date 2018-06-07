@@ -40,6 +40,12 @@ __device__ void intersectTriangle(float *ts, float *pts,
                                   const float cX, const float cY, const float cZ,
                                   const int off1, int &off2);
 
+/*__device__ void calculateQuadCoef(float x, float vx, float vy, float vz,
+                                  float dist, float &disc,
+                                  float &a, float &b, float &c);*/
+
+__device__ bool solveQuadratic(float a, float b, float c, float &x0, float &x1);
+
 __global__ void intersectBox(float* rx, float* ry, float* rz,
                              float* vx, float* vy, float* vz,
                              const float X, const float Y, const float Z,
@@ -54,6 +60,11 @@ __global__ void intersectPyramid(float *rx, float *ry, float *rz,
                                  float *vx, float *vy, float *vz,
                                  const float X, const float Y, const float H,
                                  const int N, float *ts, float *pts);
+
+__global__ void intersectSphere(float *rx, float *ry, float *rz,
+                                float *vx, float *vy, float *vz,
+                                const float radius,
+                                const int N, float *ts, float *pts);
 
 __global__ void simplifyTimes(const float* ts, const int N, const int groupSize, float* simp);
 

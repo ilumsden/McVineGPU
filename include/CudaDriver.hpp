@@ -10,6 +10,7 @@
 #include "Cylinder.hpp"
 #include "Pyramid.hpp"
 #include "Ray.hpp"
+#include "Sphere.hpp"
 
 class CudaDriver
 {

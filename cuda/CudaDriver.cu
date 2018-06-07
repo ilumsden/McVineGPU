@@ -28,17 +28,17 @@ CudaDriver::CudaDriver(const std::vector< std::shared_ptr<Ray> > &rays, int bS)
      * will be used to store the data passed to the CUDA functions.
      */
     rx = (float*)malloc(N*sizeof(float));
-    CudaError( cudaMalloc(&d_rx, N*sizeof(float)) );
+    CudaErrchk( cudaMalloc(&d_rx, N*sizeof(float)) );
     ry = (float*)malloc(N*sizeof(float));
-    CudaError( cudaMalloc(&d_ry, N*sizeof(float)) );
+    CudaErrchk( cudaMalloc(&d_ry, N*sizeof(float)) );
     rz = (float*)malloc(N*sizeof(float));
-    CudaError( cudaMalloc(&d_rz, N*sizeof(float)) );
+    CudaErrchk( cudaMalloc(&d_rz, N*sizeof(float)) );
     vx = (float*)malloc(N*sizeof(float));
-    CudaError( cudaMalloc(&d_vx, N*sizeof(float)) );
+    CudaErrchk( cudaMalloc(&d_vx, N*sizeof(float)) );
     vy = (float*)malloc(N*sizeof(float));
-    CudaError( cudaMalloc(&d_vy, N*sizeof(float)) );
+    CudaErrchk( cudaMalloc(&d_vy, N*sizeof(float)) );
     vz = (float*)malloc(N*sizeof(float));
-    CudaError( cudaMalloc(&d_vz, N*sizeof(float)) );
+    CudaErrchk( cudaMalloc(&d_vz, N*sizeof(float)) );
     // Copies the data from the rays to the host arrays.
     int c = 0;
     for (auto ray : rays)
@@ -52,12 +52,12 @@ CudaDriver::CudaDriver(const std::vector< std::shared_ptr<Ray> > &rays, int bS)
         c++;
     }
     // Copies the data from the host arrays to the device arrays.
-    CudaError( cudaMemcpy(d_rx, rx, N*sizeof(float), cudaMemcpyHostToDevice) );
-    CudaError( cudaMemcpy(d_ry, ry, N*sizeof(float), cudaMemcpyHostToDevice) );
-    CudaError( cudaMemcpy(d_rz, rz, N*sizeof(float), cudaMemcpyHostToDevice) );
-    CudaError( cudaMemcpy(d_vx, vx, N*sizeof(float), cudaMemcpyHostToDevice) );
-    CudaError( cudaMemcpy(d_vy, vy, N*sizeof(float), cudaMemcpyHostToDevice) );
-    CudaError( cudaMemcpy(d_vz, vz, N*sizeof(float), cudaMemcpyHostToDevice) );
+    CudaErrchk( cudaMemcpy(d_rx, rx, N*sizeof(float), cudaMemcpyHostToDevice) );
+    CudaErrchk( cudaMemcpy(d_ry, ry, N*sizeof(float), cudaMemcpyHostToDevice) );
+    CudaErrchk( cudaMemcpy(d_rz, rz, N*sizeof(float), cudaMemcpyHostToDevice) );
+    CudaErrchk( cudaMemcpy(d_vx, vx, N*sizeof(float), cudaMemcpyHostToDevice) );
+    CudaErrchk( cudaMemcpy(d_vy, vy, N*sizeof(float), cudaMemcpyHostToDevice) );
+    CudaErrchk( cudaMemcpy(d_vz, vz, N*sizeof(float), cudaMemcpyHostToDevice) );
 }
 
 /* This destructor deallocates the host- and device-side
@@ -71,12 +71,12 @@ CudaDriver::~CudaDriver()
     free(vx);
     free(vy);
     free(vz);
-    CudaError( cudaFree(d_rx) );
-    CudaError( cudaFree(d_ry) );
-    CudaError( cudaFree(d_rz) );
-    CudaError( cudaFree(d_vx) );
-    CudaError( cudaFree(d_vy) );
-    CudaError( cudaFree(d_vz) );
+    CudaErrchk( cudaFree(d_rx) );
+    CudaErrchk( cudaFree(d_ry) );
+    CudaErrchk( cudaFree(d_rz) );
+    CudaErrchk( cudaFree(d_vx) );
+    CudaErrchk( cudaFree(d_vy) );
+    CudaErrchk( cudaFree(d_vz) );
 }
 
 /* This is the host-side driver function for setting up the data for the
@@ -142,25 +142,25 @@ void CudaDriver::findScatteringSites(//std::shared_ptr<AbstractShape> &b,
      * data passed in from `int_times` and `int_coords`.
      */
     float *ts, *inters;
-    CudaError( cudaMalloc(&ts, 2*N*sizeof(float)) );
-    CudaError( cudaMalloc(&inters, 6*N*sizeof(float)) );
-    CudaError( cudaMemcpy(ts, int_times.data(), 2*N*sizeof(float), cudaMemcpyHostToDevice) );
-    CudaError( cudaMemcpy(inters, int_coords.data(), 6*N*sizeof(float), cudaMemcpyHostToDevice) );
+    CudaErrchk( cudaMalloc(&ts, 2*N*sizeof(float)) );
+    CudaErrchk( cudaMalloc(&inters, 6*N*sizeof(float)) );
+    CudaErrchk( cudaMemcpy(ts, int_times.data(), 2*N*sizeof(float), cudaMemcpyHostToDevice) );
+    CudaErrchk( cudaMemcpy(inters, int_coords.data(), 6*N*sizeof(float), cudaMemcpyHostToDevice) );
     /* `pos` is a device-side array that stores the coordinates of the
      * scattering sites for the neutrons.
      * The default value of its data is FLT_MAX.
      */
     float *pos;
-    CudaError( cudaMalloc(&pos, 3*N*sizeof(float)) );
+    CudaErrchk( cudaMalloc(&pos, 3*N*sizeof(float)) );
     initArray<<<numBlocks, blockSize>>>(pos, 3*N, FLT_MAX);
-    CudaErrorNoCode();
+    CudaErrchkNoCode();
     // Resizes `sites` so that it can store the contents of `pos`.
     sites.resize(3*N);
     /* Allocates an array of curandStates on the device to control
      * the random number generation.
      */
     curandState *state;
-    CudaError( cudaMalloc(&state, numBlocks*blockSize*sizeof(curandState)) );
+    CudaErrchk( cudaMalloc(&state, numBlocks*blockSize*sizeof(curandState)) );
     /* The prepRand function initializes the cuRand random number
      * generator using the states allocated above.
      * NOTE: The chrono-based timing is for debugging purposes.
@@ -174,10 +174,10 @@ void CudaDriver::findScatteringSites(//std::shared_ptr<AbstractShape> &b,
     printf("Rand Prep Complete\n    Summary: Time = %f\n", time);
     // Calls the kernel for determining the scattering sites for the neutrons
     calcScatteringSites<<<numBlocks, blockSize>>>(ts, inters, pos, state, N);
-    CudaErrorNoCode();
+    CudaErrchkNoCode();
     // Copies the post-kernel contents of `pos` into `sites`.
     float* s = sites.data();
-    CudaError( cudaMemcpy(s, pos, 3*N*sizeof(float), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaMemcpy(s, pos, 3*N*sizeof(float), cudaMemcpyDeviceToHost) );
     // Opens a file stream and prints the 
     // relevant data to scatteringSites.txt
     // NOTE: this is for debugging purposes only. This will be removed later.

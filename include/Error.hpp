@@ -1,8 +1,8 @@
 #ifndef CUDA_ERROR_H
 #define CUDA_ERROR_H
 
-#define CudaError( err ) __cudaErrorwithCode(err, __FILE__, __LINE__)
-#define CudaErrorNoCode() __cudaErrorNoCode(__FILE__, __LINE__)
+#define CudaErrchk( err ) __cudaErrorwithCode(err, __FILE__, __LINE__)
+#define CudaErrchkNoCode() __cudaErrorNoCode(__FILE__, __LINE__)
  
 #include <cstdio>
 #include <cstdlib>
