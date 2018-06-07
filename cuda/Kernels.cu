@@ -216,8 +216,55 @@ __device__ void intersectTriangle(float *ts, float *pts,
                                   const float bX, const float bY, const float bZ,
                                   const float cX, const float cY, const float cZ,
                                   const int off1, int &off2)
-{
+{   
     int index = blockIdx.x * blockDim.x + threadIdx.x;
+    float abX = bX - aX, abY = bY - aY, abZ = bZ - aZ;
+    float acX = cX - aX, acY = cY - aY, acZ = cZ - aZ;
+    float nX, nY, nZ;
+    cross(abX, abY, abZ, acX, acY, acZ, &nX, &nY, &nZ);
+    float nLength = fabsf(nX)*fabsf(nX)+fabsf(nY)*fabsf(nY)+fabsf(nZ)*fabsf(nZ);
+    nLength = sqrtf(nLength);
+    nX /= nLength; nY /= nLength; nZ /= nLength;
+    float ndv = dot(nX, nY, nZ, vx, vy, vz);
+    if (fabsf(ndv) < 1e-10)
+    {
+        ts[5*index + off1] = -1;
+        return;
+    }
+    float d = dot(nX, nY, nZ, aX, aY, aZ);
+    float t = -(dot(nX, nY, nZ, x, y, z) + d) / ndv;
+    if (t < 0)
+    {
+        ts[5*index + off1] = -1;
+        return;
+    }
+    float pX = x + vx*t, pY = y + vy*t, pZ = z + vz*t;
+    float apX = pX - aX, apY = pY - aY, apZ = pZ - aZ;
+    float edge1X = cX - bX, edge1Y = cY - bY, edge1Z = cZ - bZ;
+    float bpX = pX - bX, bpY = pY - bY, bpZ = pZ - bZ;
+    float cpX = pX - cX, cpY = pY - cY, cpZ = pZ - cZ;
+    float c0X, c0Y, c0Z, c1X, c1Y, c1Z, c2X, c2Y, c2Z;
+    cross(abX, abY, abZ, apX, apY, apZ, &c0X, &c0Y, &c0Z);
+    cross(edge1X, edge1Y, edge1Z, bpX, bpY, bpZ, &c1X, &c1Y, &c1Z);
+    cross(-acX, -acY, -acZ, cpX, cpY, cpZ, &c2X, &c2Y, &c2Z);
+    if (dot(nX, nY, nZ, c0X, c0Y, c0Z) < 0 ||
+        dot(nX, nY, nZ, c1X, c1Y, c1Z) < 0 ||
+        dot(nX, nY, nZ, c2X, c2Y, c2Z) < 0)
+    {
+        ts[5*index+off1] = -1;
+        return;
+    }
+    ts[5*index + off1] = t;
+    if (off2 == 0 || off2 == 3)
+    {
+        pts[6*index + off2] = pX;
+        pts[6*index + off2 + 1] = pY;
+        pts[6*index + off2 + 2] = pZ;
+        off2 += 3;
+    }
+    __syncthreads();
+    return;
+    /*int index = blockIdx.x * blockDim.x + threadIdx.x;
     float abX = bX - aX, abY = bY - aY, abZ = bZ - aZ;
     float acX = cX - aX, acY = cY - aY, acZ = cZ - aZ;
     float nX, nY, nZ;
@@ -270,7 +317,7 @@ __device__ void intersectTriangle(float *ts, float *pts,
         off2 += 3;
         //printf("Triangle: index = %i    off2 = %i\n", index, off2);
     }
-    __syncthreads();
+    __syncthreads();*/
     return;
 }
 
@@ -416,32 +463,6 @@ __global__ void intersectSphere(float *rx, float *ry, float *rz,
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N)
     {
-        /*float rdotv = dot(rx[index], ry[index], rz[index], vx[index], vy[index], vz[index]);
-        float rvX, rvY, rvZ;
-        cross(rx[index], ry[index], rz[index], vx[index], vy[index], vz[index], &rvX, &rvY, &rvZ);
-        float v2 = dot(vx[index], vy[index], vz[index], vx[index], vy[index], vz[index]);
-        float rvDot = dot(rvX, rvY, rvZ, rvX, rvY, rvZ);
-        float b2m4ac = v2*radius*radius;
-        b2m4ac -= rvDot;
-        if (b2m4ac < 0)
-        {
-            ts[2*index] = -1;
-            ts[2*index + 1] = -1;
-            return;
-        }
-        float sqrt_b2m4ac = sqrtf(b2m4ac);
-        float d[2];
-        d[0] = -(rdotv + sqrt_b2m4ac) / v2;
-        d[1] = -(rdotv - sqrt_b2m4ac) / v2;
-        if (d[0] > d[1])
-        {
-            int tmp = d[0];
-            d[0] = d[1];
-            d[1] = tmp;
-        }
-        float x1, x2, X, Y, Z;
-        //float a, b, c, disc;
-        float t, t1, t2;*/
         float a = dot(vx[index], vy[index], vz[index],
                       vx[index], vy[index], vz[index]);
         float b = 2 * dot(rx[index], ry[index], rz[index],
@@ -481,100 +502,7 @@ __global__ void intersectSphere(float *rx, float *ry, float *rz,
                 pts[6*index+5] = rz[index] + vz[index] * t1;
             }
         }
-        /*for (int i = 0; i < 6; i += 3)
-        {
-            calculateQuadCoef(rx[index], vx[index], vy[index], vz[index],
-                              d[i/3], disc, a, b, c);
-            if (disc < 0)
-            {
-                ts[2*index] = -1;
-                ts[2*index + 1] = -1;
-                return;
-            }
-            x1 = (-b + sqrtf(disc))/(2*a);
-            x2 = (-b - sqrtf(disc))/(2*a);
-            t1 = (x1 - rx[index])/vx[index];
-            t2 = (x2 - rx[index])/vx[index];
-            if (t1 < 0 && t2 < 0)
-            {
-                ts[2*index] = -1;
-                ts[2*index + 1] = -1;
-                return;
-            }
-            else
-            {
-                if (t1 < 0 && t2 >= 0)
-                {
-                    printf("t = t2 = %f X = x2 = %f\n", t2, x2);
-                    t = t2;
-                    X = x2;
-                }
-                else if (t1 >= 0 && t2 < 0)
-                {
-                    printf("t = t1 = %f X = x1 = %f\n", t1, x1);
-                    t = t1;
-                    X = x1;
-                }
-                else
-                {
-                    // This printf is temporary. It will be replaced later.
-                    printf("Both times for X were positive or 0.\n    Time 1 = %f Time 2 = %f\n", t1, t2);
-                    ts[2*index] = 1789;
-                    ts[2*index+1] = 1789;
-                    pts[6*index] = 1789;
-                    pts[6*index+1] = 1789;
-                    pts[6*index+2] = 1789;
-                    pts[6*index+3] = 1789;
-                    pts[6*index+4] = 1789;
-                    pts[6*index+5] = 1789;
-                    return;
-                }
-            }
-            __syncthreads();
-            Y = ry[index] + t*vy[index];
-            Z = rz[index] + t*vz[index];
-            ts[2*index + (i/3)] = t;
-            pts[6*index + i] = X;
-            pts[6*index + i+1] = Y;
-            pts[6*index + i+2] = Z;
-        }*/
         __syncthreads();
-        /*calculateQuadCoef(ry[index], vy[index], vx[index], vz[index],
-                          d1, disc, a, b, c);
-        if (disc < 0)
-        {
-            ts[2*index] = -1;
-            ts[2*index + 1] = -1;
-            return;
-        }
-        y1 = (-b + sqrtf(disc))/(2*a);
-        y2 = (-b - sqrtf(disc))/(2*a);
-        t1 = (y1 - ry[index])/vy[index];
-        t2 = (y2 - ry[index])/vy[index];
-        if ((t1 < 0 && t2 < 0) || (t1 != t && t2 != t));
-        {
-            ts[2*index] = -1;
-            ts[2*index + 1] = -1;
-            return;
-        }
-        calculateQuadCoef(rz[index], vz[index], vx[index], vy[index],
-                          d1, disc, a, b, c);
-        if (disc < 0)
-        {
-            ts[2*index] = -1;
-            ts[2*index + 1] = -1;
-            return;
-        }
-        z1 = (-b + sqrtf(disc))/(2*a);
-        z2 = (-b - sqrtf(disc))/(2*a);
-        t1 = (z1 - rz[index])/vz[index];
-        t2 = (z2 - rz[index])/vz[index];
-        if ((t1 < 0 && t2 < 0) || (t1 != t && t2 != t));
-        {
-            ts[2*index] = -1;
-            ts[2*index + 1] = -1;
-            return;
-        }*/
     }
 }
 
