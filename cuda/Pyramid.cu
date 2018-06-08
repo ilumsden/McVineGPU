@@ -29,7 +29,7 @@ void Pyramid::intersect(float *d_rx, float *d_ry, float *d_rz,
                                                N, device_time, intersect);
     //CudaDeviceSynchronize();
     //printf("\n\nEnd Kernel.\n");
-    std::vector<float> tmp;
+    /*std::vector<float> tmp;
     tmp.resize(5*N);
     CudaErrchk( cudaMemcpy(tmp.data(), device_time, 5*N*sizeof(float), cudaMemcpyDeviceToHost) );
     for (int i = 0; i < (int)(tmp.size()); i++)
@@ -39,7 +39,7 @@ void Pyramid::intersect(float *d_rx, float *d_ry, float *d_rz,
             printf("Ray Index %i:\n", i/5);
         }
         printf("    Offset = %i: Time = %f\n", (i%5), tmp[i]);
-    }
+    }*/
     cudaDeviceSynchronize();
     simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 5, simp_times);
     CudaErrchkNoCode();

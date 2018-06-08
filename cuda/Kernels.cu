@@ -232,9 +232,10 @@ __device__ void intersectTriangle(float *ts, float *pts,
         return;
     }
     float d = dot(nX, nY, nZ, aX, aY, aZ);
-    float t = -(dot(nX, nY, nZ, x, y, z) + d) / ndv;
+    float t = (dot(nX, nY, nZ, x, y, z) + d) / ndv;
     if (t < 0)
     {
+        printf("time < 0\n");
         ts[5*index + off1] = -1;
         return;
     }
@@ -262,7 +263,7 @@ __device__ void intersectTriangle(float *ts, float *pts,
         pts[6*index + off2 + 2] = pZ;
         off2 += 3;
     }
-    __syncthreads();
+    //__syncthreads();
     return;
     /*int index = blockIdx.x * blockDim.x + threadIdx.x;
     float abX = bX - aX, abY = bY - aY, abZ = bZ - aZ;
@@ -318,7 +319,6 @@ __device__ void intersectTriangle(float *ts, float *pts,
         //printf("Triangle: index = %i    off2 = %i\n", index, off2);
     }
     __syncthreads();*/
-    return;
 }
 
 /*__device__ void calculateQuadCoef(float x, float vx, float vy, float vz,
@@ -451,6 +451,7 @@ __global__ void intersectPyramid(float *rx, float *ry, float *rz,
                           vz[index], vy[index], vz[index],
                           0, 0, 0, -X/2, Y/2, -H, X/2, Y/2, -H,
                           4, offset);
+        __syncthreads();
         //printf("index = %i:\n    ts[%i] = %f ts[%i] = %f ts[%i] = %f ts[%i] = %f ts[%i] = %f\n    rx[%i] = %f ry[%i] = %f rz[%i] = %f\n    vx[%i] = %f vy[%i] = %f vz[%i] = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n", index, 5*index, ts[5*index], 5*index+1, ts[5*index+1], 5*index+2, ts[5*index+2], 5*index+3, ts[5*index+3], 5*index+4, ts[5*index+4], index, rx[index], index, ry[index], index, rz[index], index, vx[index], index, vy[index], index, vz[index], 6*index, pts[6*index], 6*index+1, pts[6*index+1], 6*index+2, pts[6*index+2], 6*index+3, pts[6*index+3], 6*index+4, pts[6*index+4], 6*index+5, pts[6*index+5]);
     }
 }
