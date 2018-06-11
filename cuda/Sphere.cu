@@ -11,29 +11,46 @@ void Sphere::intersect(float *d_rx, float *d_ry, float *d_rz,
                        const int N, const int blockSize, const int numBlocks,
                        std::vector<float> &int_times, std::vector<float> &int_coords)
 {
+    /* The device float array "device_time" is allocated on device, and
+     * its elements' values are set to -5.
+     * This array will store the times calculated by the
+     * intersectSphere kernel.
+     * NOTE: Because there are no "sides" to a sphere, this array has
+     *       a size of 2*N. As a result, there is no need for the
+     *       simplifyTimes kernel or a simp_times float array.
+     */
     float *device_time;
     CudaErrchk( cudaMalloc(&device_time, 2*N*sizeof(float)) );
     initArray<<<numBlocks, blockSize>>>(device_time, 2*N, -5);
     CudaErrchkNoCode();
+    /* The device float array "intersect" is allocated on device, and
+     * its elements' values are set to FLT_MAX.
+     * This array will store the intersection coordinates calculated
+     * by the intersectSphere kernel.
+     */
     float *intersect;
     CudaErrchk( cudaMalloc(&intersect, 6*N*sizeof(float)) );
     initArray<<<numBlocks, blockSize>>>(intersect, 6*N, FLT_MAX);
     CudaErrchkNoCode();
+    // These vectors are resized to match the size of the arrays above.
     int_times.resize(2*N);
     int_coords.resize(6*N);
-    auto start = std::chrono::steady_clock::now();
+    // This kernel is called to perform the intersection calculation.
     intersectSphere<<<numBlocks, blockSize>>>(d_rx, d_ry, d_rz,
                                               d_vx, d_vy, d_vz,
                                               radius,
                                               N, device_time, intersect);
     CudaErrchkNoCode();
-    auto stop = std::chrono::steady_clock::now();
-    double time = std::chrono::duration<double>(stop - start).count();
-    printf("intersectSphere: %f\n", time);
+    /* The data from device_time and intersect is copied into
+     * int_times and int_coords respectively.
+     */
     float *it = int_times.data();
     float *ic = int_coords.data();
     CudaErrchk( cudaMemcpy(it, device_time, 2*N*sizeof(float), cudaMemcpyDeviceToHost) );
     CudaErrchk( cudaMemcpy(ic, intersect, 6*N*sizeof(float), cudaMemcpyDeviceToHost) );
+    /* The device memory allocated at the beginning of the function
+     * is freed.
+     */
     CudaErrchk( cudaFree(device_time) );
     CudaErrchk( cudaFree(intersect) );
 }
