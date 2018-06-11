@@ -13,14 +13,10 @@
 #include "Kernels.hpp"
 #include "Error.hpp"
 
-/* This function initializes host- and device-side arrays
- * for storing the initial data for the simulation.
- */
 CudaDriver::CudaDriver(const std::vector< std::shared_ptr<Ray> > &rays, int bS)
 { 
-    // N is the number of rays considered
     N = (int)(rays.size());
-    // Calculates the thread and block parameters for CUDA
+    // Calculates the CUDA launch parameters using bS
     blockSize = bS;
     numBlocks = (N + blockSize - 1) / blockSize;
     printf("blockSize = %i\nnumBlocks = %i\n", blockSize, numBlocks);
@@ -60,17 +56,16 @@ CudaDriver::CudaDriver(const std::vector< std::shared_ptr<Ray> > &rays, int bS)
     CudaErrchk( cudaMemcpy(d_vz, vz, N*sizeof(float), cudaMemcpyHostToDevice) );
 }
 
-/* This destructor deallocates the host- and device-side
- * arrays allocated in the constructor.
- */
 CudaDriver::~CudaDriver()
 {
+    // Frees the memory for the host-side arrays.
     free(rx);
     free(ry);
     free(rz);
     free(vx);
     free(vy);
     free(vz);
+    // Frees the memory for the device-side arrays.
     CudaErrchk( cudaFree(d_rx) );
     CudaErrchk( cudaFree(d_ry) );
     CudaErrchk( cudaFree(d_rz) );
@@ -79,18 +74,17 @@ CudaDriver::~CudaDriver()
     CudaErrchk( cudaFree(d_vz) );
 }
 
-/* This is the host-side driver function for setting up the data for the
- * `intersectBlock` function from Kernels.cu, 
- * calling said function, and parsing the returned data.
- */
 void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b, 
                                      std::vector<float> &host_time,
                                      std::vector<float> &int_coords)
 {
+    /* Calls the shape's intersect function.
+     * Inheritance is used to choose the correct algorithm for intersection.
+     */
     b->intersect(d_rx, d_ry, d_rz, d_vx, d_vy, d_vz, N, blockSize, numBlocks, host_time, int_coords);
     // Opens a file stream and prints the relevant data to time.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
-    /*std::fstream fout;
+    std::fstream fout;
     fout.open("time.txt", std::ios::out);
     if (!fout.is_open())
     {
@@ -123,15 +117,11 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b,
         }
     }
     // Closes the file stream
-    fout.close();*/
+    fout.close();
     return;
 }
 
-/* This function is the host driver function for
- * determining the scattering sites for the neutrons.
- */
-void CudaDriver::findScatteringSites(//std::shared_ptr<AbstractShape> &b,
-                                     const std::vector<float> &int_times, 
+void CudaDriver::findScatteringSites(const std::vector<float> &int_times, 
                                      const std::vector<float> &int_coords,
                                      std::vector<float> &sites)
 {
@@ -216,20 +206,25 @@ void CudaDriver::findScatteringSites(//std::shared_ptr<AbstractShape> &b,
     return;
 }
 
-// This function is the driver for the GPU calculations.
 void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
 {
+    /* Creates the vectors that will store the intersection
+     * times and coordinates.
+     */
     std::vector<float> int_times;
     std::vector<float> int_coords;
+    // Starts the intersection calculation
     auto start = std::chrono::steady_clock::now();
     handleRectIntersect(b, int_times, int_coords);
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("handleRectIntersect: %f\n", time);
-    std::vector<float> scattering_sites;
+    // Creates the vector that will store the scattering coordinates
+    /*std::vector<float> scattering_sites;
+    // Starts the scattering site calculation
     start = std::chrono::steady_clock::now();
     findScatteringSites(int_times, int_coords, scattering_sites);
     stop = std::chrono::steady_clock::now();
     time = std::chrono::duration<double>(stop - start).count();
-    printf("findScatteringSites: %f\n", time);
+    printf("findScatteringSites: %f\n", time);*/
 }
