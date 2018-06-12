@@ -4,7 +4,7 @@ set -x
 
 cd "$( dirname "${BASH_SOURCE[0]}" )"
 
-cd build
+cd ../build
 
 cmake ..
 make
