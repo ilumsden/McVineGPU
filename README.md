@@ -5,9 +5,9 @@ This repo is a personal repo for performing proof-of-concept tests for ideas rel
 ## Dependencies:
 
 The following dependencies are required to run the code in this repository:
-* CMake 5.1.2 or newer
-* CUDA 8.0 or newer
-* A C++ compiler that supports C++11
+* [CMake 5.1.2 or newer](https://cmake.org/)
+* [CUDA 8.0 or newer](https://developer.nvidia.com/cuda-toolkit)
+* [A C++ compiler that supports C++11](https://cmake.org/://gcc.gnu.org/gcc-4.8/)
 
 ## Organization:
 
