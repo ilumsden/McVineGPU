@@ -36,9 +36,9 @@ int main(int argc, char **argv)
     /* These lines create the AbstractShape pointer used for testing
      * each primative.
      */
-    //std::shared_ptr<AbstractShape> b = std::make_shared<Box>(2, 2, 2);
+    std::shared_ptr<AbstractShape> b = std::make_shared<Box>(2, 2, 2);
     //std::shared_ptr<AbstractShape> b = std::make_shared<Cylinder>(2, 5);
-    std::shared_ptr<AbstractShape> b = std::make_shared<Pyramid>(4, 4, 4);
+    //std::shared_ptr<AbstractShape> b = std::make_shared<Pyramid>(4, 4, 4);
     //std::shared_ptr<AbstractShape> b = std::make_shared<Sphere>(3);
     // The "rays" vector stores pointers to the rays representing neutrons.
     std::vector< std::shared_ptr<Ray> > rays;
@@ -46,10 +46,10 @@ int main(int argc, char **argv)
      * different tests. Testing for Pyramid solids uses the x, y, and z
      * distributions. All others use norm.
      */
-    //std::normal_distribution<double> norm(5, 1);
-    std::normal_distribution<double> x(2, 1);
-    std::normal_distribution<double> y(-2, 1);
-    std::normal_distribution<double> z(-5, 1);
+    std::normal_distribution<double> norm(5, 1);
+    //std::normal_distribution<double> x(2, 1);
+    //std::normal_distribution<double> y(-2, 1);
+    //std::normal_distribution<double> z(-5, 1);
     std::default_random_engine re(time(NULL));
     // "vel" is the distribution used for setting ray velocities.
     std::uniform_real_distribution<double> vel(0, 1);
@@ -60,11 +60,11 @@ int main(int argc, char **argv)
      * The interior for loop is used to ensure the neutrons are moving
      * in the general direction of the origin.
      */
-    for (int i = 0; i < 100000000; i++)
+    for (int i = 0; i < 1000000; i++)
     {
         printf("i = %i\n", i);
-        std::shared_ptr<Ray> tmp = std::make_shared<Ray>(x(re), y(re), z(re));
-        //std::shared_ptr<Ray> tmp = std::make_shared<Ray>(norm(re), norm(re), norm(re));
+        //std::shared_ptr<Ray> tmp = std::make_shared<Ray>(x(re), y(re), z(re));
+        std::shared_ptr<Ray> tmp = std::make_shared<Ray>(norm(re), norm(re), norm(re));
         double veltmp[3];
         for (int i = 0; i < 3; i++)
         {

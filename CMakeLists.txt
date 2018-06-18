@@ -1,55 +1,43 @@
-cmake_minimum_required(VERSION 3.5.1)
-message(STATUS "CMake version: ${CMAKE_VERSION}")
+cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
-project(McVineGPU)
-
-option(USE_CUDA "Use CUDA" ON)
-
-set(CMAKE_CUDA_COMPILER nvcc)
-
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+project(McVineGPU LANGUAGES CXX CUDA)
 
 option(BUILD_TESTING "Build tests." OFF)
 
 file(GLOB cpu_source_files "${CMAKE_SOURCE_DIR}/src/*.cpp")
 file(GLOB gpu_source_files "${CMAKE_SOURCE_DIR}/cuda/*.cu")
+file(GLOB gpu_headers "${CMAKE_SOURCE_DIR}/include/*.hpp")
+if(BUILD_TESTING)
+    file(GLOB test_cuda_src "${CMAKE_SOURCE_DIR}/test/*.cu")
+    file(GLOB test_cuda_headers "${CMAKE_SOURCE_DIR}/test/*.hpp")
+    file(GLOB test_drivers "${CMAKE_SOURCE_DIR}/test/*.cpp")
+endif()
+
+message(STATUS "CUDA include directories are ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_SOURCE_DIR}/cuda)
+include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
-#if( ("${CMAKE_VERSION}" VERSION_EQUAL 3.8) OR
-#        ("${CMAKE_VERSION}" VERSION_GREATER 3.8) )
-    # Modern CMake
-#    if(USE_CUDA)
-#        enable_language("CUDA")
-#        add_executable(McVineGPUTest ${cpu_source_files} ${gpu_source_files})
-#        set_property(TARGET McVineGPUTest PROPERTY CUDA_STANDARD 11)
-#    else(USE_CUDA)
-#        add_executable(McVineGPUTest ${cpu_source_files})
-#    endif()
-#else()
-    # Old CMake
-    add_executable(${PROJECT_NAME} ${cpu_source_files})
-    if(USE_CUDA)
-        find_package(CUDA 8.0)
-        if(NOT CUDA_FOUND)
-            message(STATUS "CUDA not found")
-            set(USE_CUDA OFF)
-        else()
-            list(APPEND CUDA_NVCC_FLAGS "--std=c++11 -g -G -lcurand")
-            CUDA_ADD_LIBRARY(McVineGPUTest_gpu ${gpu_source_files} STATIC)
-            target_link_libraries(${PROJECT_NAME} McVineGPUTest_gpu)
-        endif()
-    endif()
-#endif()
+list(APPEND CMAKE_CUDA_FLAGS "-cudart static")
 
-add_subdirectory(test)
+add_library(cuMcVineLib STATIC ${gpu_source_files} ${gpu_headers})
 
-message(STATUS "USE_CUDA: ${USE_CUDA}")
-if(USE_CUDA)
-    add_definitions(-DUSE_CUDA)
+target_compile_features(cuMcVineLib PUBLIC cxx_std_11)
+set_target_properties(cuMcVineLib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+target_link_libraries(cuMcVineLib curand)
+
+add_executable(${PROJECT_NAME} ${cpu_source_files})
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_11)
+target_link_libraries(${PROJECT_NAME} PRIVATE cuMcVineLib)
+
+if(BUILD_TESTING)
+    message(STATUS "Building test suite.")
+    add_library(testMcVineLib ${test_cuda_src} ${test_cuda_headers})
+    set_target_properties(testMcVineLib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    target_compile_features(testMcVineLib PUBLIC cxx_std_11)
+    target_link_libraries(testMcVineLib cuMcVineLib)
+
+    add_executable(Test_${PROJECT_NAME} ${test_drivers})
+    target_compile_features(Test_${PROJECT_NAME} PUBLIC cxx_std_11)
+    target_link_libraries(Test_${PROJECT_NAME} PRIVATE testMcVineLib)
 endif()

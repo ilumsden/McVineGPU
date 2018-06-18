@@ -1,8 +1,8 @@
 #ifndef _CUDA_DRIVER_H_
 #define _CUDA_DRIVER_H_
 
-#include <thrust/host_vector.h>
-#include <thrust/device_vector.h>
+//#include <thrust/host_vector.h>
+//#include <thrust/device_vector.h>
 #include <memory>
 #include <vector>
 

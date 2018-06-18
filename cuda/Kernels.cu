@@ -95,12 +95,7 @@ __device__ void intersectRectangle(float* ts, float* pts,
             off2 += 3;
             //printf("Rectangle: index = %i    off2 = %i\n", index, off2);
         }
-        /* The addition of 114 to the time is for testing the
-         * intersectPyramid algorithm.
-         * It will be removed later.
-         */
-        //ascii(r) = 114
-        ts[off1 + index*groupSize] = t + 114;
+        ts[off1 + index*groupSize] = t;
     }
     /* If the intersection coordinates do not fall within the rectangle,
      * a time of -1 is assigned to the function call's element in ts.
