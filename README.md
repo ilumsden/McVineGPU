@@ -20,3 +20,4 @@ The code in this repository is organized as follows:
   * Host (CPU) Code that calls CUDA Kernels
 * `src`: This directory stores any plain C++ (no CUDA) code that is needed. Currently, it only contains the main function for the non-test code.
 * `test`: This directory stores all the C++ (regular and CUDA) code that is directly used for testing (i.e. unit tests).
+* `test_separate_compilation`: This directory is not part of the main repository. It is an example directory that shows how to manually compile a CUDA project with separable compilation for device code.
