@@ -1,7 +1,13 @@
 #!/bin/bash
+
 cd "$( dirname "${BASH_SOURCE[0]}" )"
 
-./clean_test.sh
+if [ $# -gt 0 ]; then
+    args=(${@:1})
+    ./clean_test.sh ${args}
+else
+    ./clean_test.sh
+fi
 
 cd ..
 

@@ -1,7 +1,13 @@
 #!/bin/bash
+
 cd "$( dirname "${BASH_SOURCE[0]}" )"
 
-./test.sh
+if [ $# -gt 0 ]; then
+    args=(${@:1})
+    ./test.sh ${args}
+else
+    ./test.sh
+fi
 
 cd ..
 

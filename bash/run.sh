@@ -1,7 +1,13 @@
 #!/bin/bash
+
 cd "$( dirname "${BASH_SOURCE[0]}" )"
 
-./build.sh
+if [ $# -gt 0 ]; then
+    args=(${@:1})
+    ./build.sh ${args}
+else
+    ./build.sh
+fi
 
 cd ..
 
