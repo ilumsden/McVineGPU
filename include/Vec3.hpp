@@ -26,15 +26,15 @@ class Vec3
          * ideally only be used for simpler types (i.e int,
          * float, double, etc.).
          */
-        __host__ __device__ T getX() const { return x; }
-        __host__ __device__ T getY() const { return y; }
-        __host__ __device__ T getZ() const { return z; }
+        __host__ __device__ T getX() const { return m_data[0]; }
+        __host__ __device__ T getY() const { return m_data[1]; }
+        __host__ __device__ T getZ() const { return m_data[2]; }
         /* These three functions are simple "setter" functions
          * that set the values of x, y, and z respectively.
          */
-        __host__ __device__ void setX(T a) { x = a; }
-        __host__ __device__ void setY(T b) { y = b; }
-        __host__ __device__ void setZ(T c) { z = c; }
+        __host__ __device__ void setX(T a) { m_data[0] = a; }
+        __host__ __device__ void setY(T b) { m_data[1] = b; }
+        __host__ __device__ void setZ(T c) { m_data[2] = c; }
         __host__ __device__ void normalize();
         __host__ __device__ T length() const;
         __host__ __device__ Vec3<T> operator+(const Vec3<T> &b) const;
@@ -52,12 +52,6 @@ class Vec3
         __host__ __device__ const T & operator[](int i) const;
         __host__ __device__ T & operator[](int i);
     private:
-        /* x, y, and z reference the three elements of the m_data
-         * array. They are references, and, as such, any changes
-         * made to x, y, or z will affect the corresponding elements
-         * in m_data.
-         */
-        T &x, &y, &z;
         T m_data[3];
 };
 
@@ -68,12 +62,11 @@ class Vec3
  * This function is able to run on both host (CPU) and device (GPU).
  */
 template <typename T>
-__host__ __device__ Vec3<T>::Vec3(T a=T(), T b=T(), T c=T())
-    : x(m_data[0]), y(m_data[1]), z(m_data[2])
+__host__ __device__ Vec3<T>::Vec3(T a, T b, T c)
 {
-    x = a;
-    y = b;
-    z = c;
+    m_data[0] = a;
+    m_data[1] = b;
+    m_data[2] = c;
 }
 
 /* The copy constructor for Vec3.
@@ -82,11 +75,10 @@ __host__ __device__ Vec3<T>::Vec3(T a=T(), T b=T(), T c=T())
  */
 template <typename T>
 __host__ __device__ Vec3<T>::Vec3(const Vec3<T> &b)
-    : x(m_data[0]), y(m_data[1]), z(m_data[2])
 {
-    x = b[0];
-    y = b[1];
-    z = b[2];
+    m_data[0] = b[0];
+    m_data[1] = b[1];
+    m_data[2] = b[2];
 }
 
 /* This function is an overloaded assignment operator to
@@ -94,11 +86,11 @@ __host__ __device__ Vec3<T>::Vec3(const Vec3<T> &b)
  * Vec3 object.
  */
 template <typename T>
-__host__ __device__ const Vec3<T> & operator=(const Vec3<T> &b)
+__host__ __device__ const Vec3<T> & Vec3<T>::operator=(const Vec3<T> &b)
 {
-    x = b[0];
-    y = b[1];
-    z = b[2];
+    m_data[0] = b[0];
+    m_data[1] = b[1];
+    m_data[2] = b[2];
     return *this;
 }
 
@@ -110,13 +102,18 @@ template <typename T>
 __host__ __device__ void Vec3<T>::normalize()
 {
     *this *= (1.0 / this->length());
+    printf("x = %f\ny = %f\nz = %f\n", m_data[0], m_data[1], m_data[2]);
 }
 
 // This function calculates and returns the length of the vector.
 template <typename T>
 __host__ __device__ T Vec3<T>::length() const
 {
-    return std::sqrt( std::abs(x)*std::abs(x) + std::abs(y)*std::abs(y) + std::abs(z)*std::abs(z) );
+#if defined(__CUDA_ARCH__)
+    return sqrt( fabs(m_data[0])*fabs(m_data[0]) + fabs(m_data[1])*fabs(m_data[1]) + fabs(m_data[2])*fabs(m_data[2]) );
+#else
+    return std::sqrt( std::abs(m_data[0])*std::abs(m_data[0]) + std::abs(m_data[1])*std::abs(m_data[1]) + std::abs(m_data[2])*std::abs(m_data[2]) );
+#endif
 }
 
 /* This function performs element-wise addition on two vectors and 
@@ -125,7 +122,7 @@ __host__ __device__ T Vec3<T>::length() const
 template <typename T>
 __host__ __device__ Vec3<T> Vec3<T>::operator+(const Vec3<T> &b) const
 {
-    return Vec3<T>(x+b[0], y+b[1], z+b[2]);
+    return Vec3<T>(m_data[0]+b[0], m_data[1]+b[1], m_data[2]+b[2]);
 }
 
 /* This function performs element-wise addition on two vectors
@@ -134,9 +131,9 @@ __host__ __device__ Vec3<T> Vec3<T>::operator+(const Vec3<T> &b) const
 template <typename T>
 __host__ __device__ void Vec3<T>::operator+=(const Vec3<T> &b)
 {
-    x += b[0];
-    y += b[1];
-    z += b[2];
+    m_data[0] += b[0];
+    m_data[1] += b[1];
+    m_data[2] += b[2];
 }
 
 /* This function performs element-wise substraction on two vectors
@@ -145,7 +142,7 @@ __host__ __device__ void Vec3<T>::operator+=(const Vec3<T> &b)
 template <typename T>
 __host__ __device__ Vec3<T> Vec3<T>::operator-(const Vec3<T> &b) const
 {
-    return Vec3<T>(x-b[0], y-b[1], z-b[2]);
+    return Vec3<T>(m_data[0]-b[0], m_data[1]-b[1], m_data[2]-b[2]);
 }
 
 /* This function negates each component of the vector and
@@ -154,18 +151,18 @@ __host__ __device__ Vec3<T> Vec3<T>::operator-(const Vec3<T> &b) const
 template <typename T>
 __host__ __device__ Vec3<T> Vec3<T>::operator-() const
 {
-    return Vec3<T>(-x, -y, -z);
+    return Vec3<T>(-m_data[0], -m_data[1], -m_data[2]);
 }
 
 /* This function performs element-wise subtraction on two vectors
  * and stores the result in the Vec3 object on the left of the operator.
  */
 template <typename T>
-__host__ __device__ void Vec3<T>::operator-=(const Vec3<T> &b) const
+__host__ __device__ void Vec3<T>::operator-=(const Vec3<T> &b)
 {
-    x -= b[0];
-    y -= b[1];
-    z -= b[2];
+    m_data[0] -= b[0];
+    m_data[1] -= b[1];
+    m_data[2] -= b[2];
 }
 
 /* This function performs a scalar product on the vector and
@@ -174,7 +171,7 @@ __host__ __device__ void Vec3<T>::operator-=(const Vec3<T> &b) const
 template <typename T>
 __host__ __device__ Vec3<T> Vec3<T>::operator*(const T n) const
 {
-    return Vec3<T>(n*x, n*y, n*z);
+    return Vec3<T>(n*m_data[0], n*m_data[1], n*m_data[2]);
 }
 
 /* This function performs a vector (cross) product on two vectors
@@ -183,9 +180,9 @@ __host__ __device__ Vec3<T> Vec3<T>::operator*(const T n) const
 template <typename T>
 __host__ __device__ Vec3<T> Vec3<T>::operator*(const Vec3<T> &b) const
 {
-    return Vec3<T>(y*b[2] - z*b[1],
-                   z*b[0] - x*b[2],
-                   x*b[1] - y*b[0]);
+    return Vec3<T>(m_data[1]*b[2] - m_data[2]*b[1],
+                   m_data[2]*b[0] - m_data[0]*b[2],
+                   m_data[0]*b[1] - m_data[1]*b[0]);
 }
 
 /* This function performs a scalar product on the vector and
@@ -194,9 +191,9 @@ __host__ __device__ Vec3<T> Vec3<T>::operator*(const Vec3<T> &b) const
 template <typename T>
 __host__ __device__ void Vec3<T>::operator*=(const T n)
 {
-    x *= n;
-    y *= n;
-    z *= n;
+    m_data[0] *= n;
+    m_data[1] *= n;
+    m_data[2] *= n;
 }
 
 /* This function performs a vector (cross) product on two vectors
@@ -205,9 +202,14 @@ __host__ __device__ void Vec3<T>::operator*=(const T n)
 template <typename T>
 __host__ __device__ void Vec3<T>::operator*=(const Vec3<T> &b)
 {
-    x = y*b[2] - z*b[1];
-    y = z*b[0] - x*b[2];
-    z = x*b[1] - y*b[0];
+    float tmp[3];
+    for (int i = 0; i < 3; i++)
+    {
+        tmp[i] = m_data[i];
+    }
+    m_data[0] = tmp[1]*b[2] - tmp[2]*b[1];
+    m_data[1] = tmp[2]*b[0] - tmp[0]*b[2];
+    m_data[2] = tmp[0]*b[1] - tmp[1]*b[0];
 }
 
 /* This function calculates the dot product of two vectors and
@@ -216,7 +218,7 @@ __host__ __device__ void Vec3<T>::operator*=(const Vec3<T> &b)
 template <typename T>
 __host__ __device__ T Vec3<T>::operator|(const Vec3<T> &b) const
 {
-    return x*b[0] + y*b[1] + z*b[2];
+    return m_data[0]*b[0] + m_data[1]*b[1] + m_data[2]*b[2];
 }
 
 /* This function is a basic comparison operator that returns true
@@ -226,7 +228,7 @@ __host__ __device__ T Vec3<T>::operator|(const Vec3<T> &b) const
 template <typename T>
 __host__ __device__ bool Vec3<T>::operator==(const Vec3<T> &b) const
 {
-    return (x == b[0]) && (y == b[1]) && (z == b[2]);
+    return (m_data[0] == b[0]) && (m_data[1] == b[1]) && (m_data[2] == b[2]);
 }
 
 /* This function is a basic comparison operator that returns true
@@ -236,7 +238,7 @@ __host__ __device__ bool Vec3<T>::operator==(const Vec3<T> &b) const
 template <typename T>
 __host__ __device__ bool Vec3<T>::operator!=(const Vec3<T> &b) const
 {
-    return (x != b[0]) || (y != b[1]) || (z != b[2]);
+    return (m_data[0] != b[0]) || (m_data[1] != b[1]) || (m_data[2] != b[2]);
 }
 
 /* This function is an alternate "getter" function that uses array
@@ -248,23 +250,24 @@ __host__ __device__ bool Vec3<T>::operator!=(const Vec3<T> &b) const
 template <typename T>
 __host__ __device__ const T & Vec3<T>::operator[](int i) const
 {
-    if (i < 3) { return m_data[i]; }
-    else
+    if (i >= 3)
     {
-        fprintf(stderr, "Vec3: Index %i out of bounds.\n", i);
 /* If the error occurs on the GPU, the PTX assembly command "trap"
  * will be injected, causing the GPU code to immediately end.
  * This will also cause the kernel to return a cudaErrorUnknown
  * (errcode 30).
  */
 #if defined(__CUDA_ARCH__)
+        printf("Vec3: Index %i out of bounds.\n", i);
         __threadfence();
         asm("trap;");
 // If the error occurs on the CPU, an out_of_range exception is thrown.
 #else
+        fprintf(stderr, "Vec3: Index %i out of bounds.\n", i);
         throw std::out_of_range("out of bounds");
 #endif
     }
+    return m_data[i];
 }
 
 /* This function is the same as the array lookup overload above,
@@ -273,16 +276,18 @@ __host__ __device__ const T & Vec3<T>::operator[](int i) const
 template <typename T>
 __host__ __device__ T & Vec3<T>::operator[](int i)
 {
-    if (i < 3) { return m_data[i]; }
-    else
+    if (i >= 3)
     {
-        fprintf(stderr, "Vec3: Index %i out of bounds.\n", i);
 #if defined(__CUDA_ARCH__)
+        printf("Vec3: Index %i out of bounds.\n", i);
+        __threadfence();
         asm("trap;");
 #else
+        fprintf(stderr, "Vec3: Index %i out of bounds.\n", i);
         throw std::out_of_range("out of bounds");
 #endif
     }
+    return m_data[i];
 }
 
 #endif

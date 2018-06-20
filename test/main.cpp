@@ -10,7 +10,7 @@
 
 using namespace std;
 
-const int num_keys = 1;
+const int num_keys = 2;
 
 int main(int argc, char **argv)
 {
@@ -19,7 +19,7 @@ int main(int argc, char **argv)
         printf("Usage: ./TestSuite [flags]\n\nFlags:\n    -h/--help: Prints help info\n    -ti/--testIds [Ids]: Flag for specifying the IDs for the tests you want to run.\n\nTest IDs:\n    0: Test for Triangle Intersection\n");
         return 0;
     }
-    if (string(argv[1]) != "-ti" || string(argv[1]) != "--testIds")
+    if (string(argv[1]) != "-ti" && string(argv[1]) != "--testIds")
     {
         printf("Invalid argument: %s\n\n", argv[1]);
         printf("Usage: ./TestSuite [flags]\n\nFlags:\n    -h/--help: Prints help info\n    -ti/--testIds [Ids]: Flag for specifying the IDs for the tests you want to run.\n\nTest IDs:\n    0: Test for Triangle Intersection\n");
@@ -60,6 +60,7 @@ int main(int argc, char **argv)
         switch (i)
         {
             case 0: assert( test_intersectTriangle() == true ); break;
+            case 1: assert( test_Vec3() == true ); break;
             // More cases will be added later.
             default: throw domain_error("Invalid ID got to execution"); return -4;
         }
