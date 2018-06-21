@@ -72,6 +72,7 @@ bool test_Vec3()
                                       "Vector *= Operator Incorrect.",
                                       "Dot Product (|) Operator Incorrect."};
     bool *res = (bool*)malloc(20*sizeof(bool));
+    printf("CPU FLT_MIN = %e\n", FLT_MIN);
     vec3Test<<<numBlocksSimple, blockSizeSimple>>>(d_vectors, d_res);
     CudaErrchkNoCode();
     CudaErrchk( cudaMemcpy(res, d_res, 20*sizeof(bool), cudaMemcpyDeviceToHost) );

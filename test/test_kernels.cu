@@ -1,6 +1,12 @@
 #include "test_kernels.hpp"
 #include "Kernels.hpp"
 
+__host__ __device__ bool assert_almosteq(float a, float b)
+{
+    //printf("a - b = %e\n", a-b);
+    return (fabs(a - b) < 1e-7);
+}
+
 __global__ void triangleTest(float *ts, float *pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -48,8 +54,14 @@ __global__ void vec3Test(Vec3<float> *vectors, bool *res)
         case 5:
             // vectors[5] is originally <3, 4, 5>
             vectors[5].normalize();
-            printf("normalize\n    xsol = %f\n    ysol = %f\n    zsol = %f\n", (3.0/(5.0*sqrtf(2))), (4.0/(5.0*sqrtf(2))), (5.0/(5.0*sqrtf(2)))); 
-            res[9] = !((vectors[5].getX() == (3.0/(5.0*sqrtf(2.0)))) && (vectors[5].getY() == (4.0/(5.0*sqrtf(2.0)))) && (vectors[5].getZ() == (5.0/(5.0*sqrtf(2.0)))));
+            /*printf("normalize\n    xsol = %e\n    ysol = %e\n    zsol = %.15e\n    xact = %e\n    yact = %e\n    zact = %.15e\n",
+                   (3.0/(5.0*sqrtf(2))), 
+                   (4.0/(5.0*sqrtf(2))), 
+                   (5.0/(5.0*sqrtf(2))),
+                   vectors[5].getX(), vectors[5].getY(), vectors[5].getZ());*/
+            res[9] = !(assert_almosteq(vectors[5].getX(), (3.0/(5.0*sqrtf(2.0)))) 
+                        && assert_almosteq(vectors[5].getY(), (4.0/(5.0*sqrtf(2.0)))) 
+                        && assert_almosteq(vectors[5].getZ(), (5.0/(5.0*sqrtf(2.0)))));
             break;
         case 6:
             /* vectors[6] = <7, 5, 9>

@@ -65,4 +65,6 @@ int main(int argc, char **argv)
             default: throw domain_error("Invalid ID got to execution"); return -4;
         }
     }
+    printf("All tests successful!\n");
+    return 0;
 }
