@@ -18,8 +18,13 @@
 template <typename T>
 __global__ void initArray(T* data, const int size, const T val)
 {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+#if defined(__CUDA_ARCH__)
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
+#else
+    int idx = 0;
+    int stride = 0;
+#endif
     for (int i = idx; i < size; i += stride)
     {
         data[i] = val;
@@ -65,9 +70,12 @@ __device__ void intersectRectangle(//float* ts, float* pts,
  * correct spot in the ts and pts arrays.
  * This function can be called on device only.
  */
-__device__ void intersectCylinderSide(float *ts, float *pts,
-                                      float x, float y, float z,
-                                      float vx, float vy, float vz,
+__device__ void intersectCylinderSide(//float *ts, float *pts,
+                                      float *ts, Vec3<float> *pts,
+                                      //float x, float y, float z,
+                                      //float vx, float vy, float vz,
+                                      const Vec3<float> &orig,
+                                      const Vec3<float> &vel,
                                       const float r, const float h,
                                       int &offset);
 
@@ -78,9 +86,12 @@ __device__ void intersectCylinderSide(float *ts, float *pts,
  * the ts and pts arrays.
  * This function can be called on device only.
  */
-__device__ void intersectCylinderTopBottom(float *ts, float *pts,
-                                           float x, float y, float z,
-                                           float vx, float vy, float vz,
+__device__ void intersectCylinderTopBottom(//float *ts, float *pts,
+                                           float *ts, Vec3<float> *pts,
+                                           //float x, float y, float z,
+                                           //float vx, float vy, float vz,
+                                           const Vec3<float> &orig,
+                                           const Vec3<float> &vel,
                                            const float r, const float h,
                                            int &offset);
 
@@ -133,10 +144,12 @@ __global__ void intersectBox(//float* rx, float* ry, float* rz,
  * and coordinates are stored in the ts and pts arrays respectively.
  * This function can be called from host.
  */
-__global__ void intersectCylinder(float *rx, float *ry, float *rz,
-                                  float *vx, float *vy, float *vz,
+__global__ void intersectCylinder(//float *rx, float *ry, float *rz,
+                                  //float *vx, float *vy, float *vz,
+                                  Vec3<float> *origins, Vec3<float> *vel,
                                   const float r, const float h,
-                                  const int N, float *ts, float *pts);
+                                  const int N, float *ts, //float *pts);
+                                  Vec3<float> *pts);
 
 /* This function controlls the calculation of the intersections between
  * a collection of neutrons (represented by rx, ry, rz, vx, vy, and vz)

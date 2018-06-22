@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "Box.hpp"
-//#include "Cylinder.hpp"
+#include "Cylinder.hpp"
 //#include "Pyramid.hpp"
 #include "Ray.hpp"
 //#include "Sphere.hpp"

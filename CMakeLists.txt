@@ -25,9 +25,11 @@ list(APPEND CMAKE_CUDA_FLAGS "-cudart static")
 add_library(cuMcVineLib STATIC
             ${CMAKE_SOURCE_DIR}/cuda/Box.cu 
             ${CMAKE_SOURCE_DIR}/cuda/CudaDriver.cu 
+            ${CMAKE_SOURCE_DIR}/cuda/Cylinder.cu
             ${CMAKE_SOURCE_DIR}/cuda/Kernels.cu
             ${CMAKE_SOURCE_DIR}/include/AbstractShape.hpp
             ${CMAKE_SOURCE_DIR}/include/Box.hpp
+            ${CMAKE_SOURCE_DIR}/include/Cylinder.hpp
             ${CMAKE_SOURCE_DIR}/include/CudaDriver.hpp
             ${CMAKE_SOURCE_DIR}/include/Error.hpp
             ${CMAKE_SOURCE_DIR}/include/Kernels.hpp

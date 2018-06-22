@@ -111,9 +111,12 @@ __device__ void intersectRectangle(//float* ts, float* pts,
     }
 }
 
-__device__ void intersectCylinderSide(float *ts, float *pts,
-                                      float x, float y, float z,
-                                      float vx, float vy, float vz,
+__device__ void intersectCylinderSide(//float *ts, float *pts,
+                                      float *ts, Vec3<float> *pts,
+                                      //float x, float y, float z,
+                                      //float vx, float vy, float vz,
+                                      const Vec3<float> &orig,
+                                      const Vec3<float> &vel,
                                       const float r, const float h, 
                                       int &offset)
 {
@@ -135,33 +138,36 @@ __device__ void intersectCylinderSide(float *ts, float *pts,
      *       is then cancelled by the 2 in the denominator of the
      *       quadratic formula.
      */ 
-    float a = vx*vx + vy*vy;
-    float b = x*vx + y*vy;
-    float c = x*x+y*y - r*r;
+    float a = vel[0]*vel[0] + vel[1]*vel[1];//vx*vx + vy*vy;
+    float b = 2*(orig[0]*vel[0] + orig[1]*vel[1]);//(x*vx + y*vy);
+    float c = orig[0]*orig[0] + orig[1]*orig[1] - r*r;//x*x+y*y - r*r; 
     // discr is the discriminant of the quadratic formula (b^2 - 4ac).
-    float discr = b*b - a*c;
-    float t;
+    //float discr = b*b - a*c;
+    //float t;
+    float t0, t1;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     /* If the discriminant is less than 0, then there are no real roots
      * to the quadratic equation that defines t. As a result, the times
      * in ts are set to the default no-solution value of -1.
      */
-    if (discr < 0)
+    if (!solveQuadratic(a, b, c, t0, t1))
+    //if (discr < 0)
     {
         ts[4*index + 2] = -1;
         ts[4*index + 3] = -1;
-        return;
+        //return;
     }
     /* If the discriminant equals 0, there can only be one possible
      * time and, thus, only one possible intersection with the side
      * of the Cylinder.
      */
-    else if (discr == 0)
+    else if (t0 < 0)
+    //else if (discr == 0)
     {
         /* Calculates time from a simplified, case-specific version of the
          * quadratic formula.
          */
-        t = -b/a;
+        //t = -b/a;
         /* ts[4*index + 3] stores the time of the second intersection
          * between the neutron and the side of the Cylinder. Since a
          * second intersection is not possible in this case, this element
@@ -172,16 +178,20 @@ __device__ void intersectCylinderSide(float *ts, float *pts,
          * if the absolute value of the Z-coordinate of the intersection
          * point is less than h/2.
          */
-        if (fabsf(z+vz*t) < h/2)
+        //if (fabsf(z+vz*t) < h/2)
+        if (fabsf(orig[2]+vel[2]*t1) < h/2)
         {
-            ts[4*index + 2] = t;
+            ts[4*index + 2] = t1;
             // See intersectRectangle
-            if (offset == 0 || offset == 3)
+            //if (offset == 0 || offset == 3)
+            if (offset < 2)
             {
-                pts[6*index + offset] = x+vx*t;
-                pts[6*index + offset + 1] = y+vy*t;
-                pts[6*index + offset + 2] = z+vz*t;
-                offset += 3;
+                //pts[6*index + offset] = x+vx*t1;
+                //pts[6*index + offset + 1] = y+vy*t1;
+                //pts[6*index + offset + 2] = z+vz*t1;
+                pts[2*index + offset] = orig + (vel*t1);
+                //offset += 3;
+                offset++;
             }
         }
         else
@@ -189,89 +199,108 @@ __device__ void intersectCylinderSide(float *ts, float *pts,
             ts[4*index + 2] = -1;
         }
     }
-    // Used to prevent memory corruption.
-    __syncthreads();
-    // i is used to track the offset for ts
-    int i = 2;
-    // t is calculated using the quadratic formula with +
-    discr = sqrtf(discr);
-    t = (-b+discr)/a;
-    if (fabsf(z+vz*t) < h/2)
+    else
     {
-        ts[4*index + i] = t;
-        i++;
-        if (offset == 0 || offset == 3)
+        // i is used to track the offset for ts
+        int i = 2;
+        // t is calculated using the quadratic formula with +
+        //discr = sqrtf(discr);
+        //t = (-b+discr)/a;
+        //if (fabsf(z+vz*t0) < h/2)
+        if (fabsf(orig[2]+vel[2]*t0) < h/2)
         {
-            pts[6*index + offset] = x+vx*t;
-            pts[6*index + offset + 1] = y+vy*t;
-            pts[6*index + offset + 2] = z+vz*t;
-            offset += 3;
+            ts[4*index + i] = t0;
+            i++;
+            //if (offset == 0 || offset == 3)
+            if (offset < 2)
+            {
+                //pts[6*index + offset] = x+vx*t0;
+                //pts[6*index + offset + 1] = y+vy*t0;
+                //pts[6*index + offset + 2] = z+vz*t0;
+                pts[2*index + offset] = orig + (vel*t0);
+                //offset += 3;
+                offset++;
+            }
         }
-    }
-    // t is calculated using the quadratic formula with -
-    t = (-b-discr)/a;
-    if (fabsf(z+vz*t) < h/2)
-    {
-        ts[4*index + i] = t;
-        i++;
-        if (offset == 0 || offset == 3)
+        // t is calculated using the quadratic formula with -
+        //t = (-b-discr)/a;
+        //if (fabsf(z+vz*t1) < h/2)
+        if (fabsf(orig[2]+vel[2]*t1) < h/2)
         {
-            pts[6*index + offset] = x+vx*t;
-            pts[6*index + offset + 1] = y+vy*t;
-            pts[6*index + offset + 2] = z+vz*t;
-            offset += 3;
+            ts[4*index + i] = t1;
+            i++;
+            //if (offset == 0 || offset == 3)
+            if (offset < 2)
+            {
+                //pts[6*index + offset] = x+vx*t1;
+                //pts[6*index + offset + 1] = y+vy*t1;
+                //pts[6*index + offset + 2] = z+vz*t1;
+                pts[2*index + offset] = orig + (vel*t1);
+                //offset += 3;
+                offset++;
+            }
         }
-    }
-    /* If i < 4, at least one time was not set in ts.
-     * This if-statement will set the time of these unset
-     * elements to -1.
-     */
-    if (i < 4)
-    {
-        for (int j = i; j < 4; j++)
+        /* If i < 4, at least one time was not set in ts.
+         * This if-statement will set the time of these unset
+         * elements to -1.
+         */
+        if (i < 4)
         {
-            ts[4*index + j] = -1;
+            for (int j = i; j < 4; j++)
+            {
+                ts[4*index + j] = -1;
+            }
         }
     }
     // Again used to prevent memory corruption
     __syncthreads();
 }
 
-__device__ void intersectCylinderTopBottom(float *ts, float *pts,
-                                           float x, float y, float z,
-                                           float vx, float vy, float vz,
+__device__ void intersectCylinderTopBottom(//float *ts, float *pts,
+                                           float *ts, Vec3<float> *pts,
+                                           //float x, float y, float z,
+                                           //float vx, float vy, float vz,
+                                           const Vec3<float> &orig,
+                                           const Vec3<float> &vel,
                                            const float r, const float h,
                                            int &offset)
 {
     // Calculates values needed to evaluate and validate the time.
     float r2 = r*r;
     float hh = h/2;
-    float x1, y1;
+    //float x1, y1;
+    Vec3<float> faceint;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     /* Time is calculated by dividing the Z-distance the neutron has
      * to travel to reach the Z-coordinate of the top of the Cylinder
      * by the Z component of the neutron's velocity.
      */
-    float t = (hh-z)/vz;
+    //float t = (hh-z)/vz;
+    float t = (hh-orig[2])/vel[2];
     /* Uses basic kinematics to determine the X and Y 
      * coordinates of the potential intersection point.
      */
-    x1 = x + vx*t;
-    y1 = y + vy*t;
+    //x1 = x + vx*t;
+    //y1 = y + vy*t;
+    faceint = orig + (vel * t);
     /* If the intersection point is a valid solution to the
      * equation defining the circular top of the Cylinder, 
      * the time and intersection coordinates are stored in
      * ts and pts respectively.
      */
-    if (x1*x1 + y1*y1 <= r2)
+    //if (x1*x1 + y1*y1 <= r2)
+    if (faceint[0]*faceint[0] + faceint[1]*faceint[1] <= r2)
     {
         ts[4*index] = t;
-        if (offset == 0 || offset == 3)
+        //if (offset == 0 || offset == 3)
+        if (offset < 2)
         {
-            pts[6*index + offset] = x1;
-            pts[6*index + offset + 1] = y1;
-            pts[6*index + offset + 2] = hh;
-            offset += 3;
+            //pts[6*index + offset] = x1;
+            //pts[6*index + offset + 1] = y1;
+            //pts[6*index + offset + 2] = hh;
+            pts[2*index + offset] = faceint;
+            //offset += 3;
+            offset++;
         }
     }
     // Otherwise, the time is stored as -1.
@@ -280,18 +309,24 @@ __device__ void intersectCylinderTopBottom(float *ts, float *pts,
         ts[4*index] = -1;
     }
     // Repeat the above step for the bottom face of the Cylinder.
-    t = (-hh-z)/vz;
-    x1 = x + vx*t;
-    y1 = y + vy*t;
-    if (x1*x1 + y1*y1 <= r2)
+    //t = (-hh-z)/vz;
+    t = (-hh-orig[2])/vel[2];
+    //x1 = x + vx*t;
+    //y1 = y + vy*t;
+    faceint = orig + (vel * t);
+    //if (x1*x1 + y1*y1 <= r2)
+    if (faceint[0]*faceint[0] + faceint[1]*faceint[1] <= r2)
     {
         ts[4*index + 1] = t;
-        if (offset == 0 || offset == 3)
+        //if (offset == 0 || offset == 3)
+        if (offset < 2)
         {
-            pts[6*index + offset] = x1;
-            pts[6*index + offset + 1] = y1;
-            pts[6*index + offset + 2] = -hh;
-            offset += 3;
+            //pts[6*index + offset] = x1;
+            //pts[6*index + offset + 1] = y1;
+            //pts[6*index + offset + 2] = hh;
+            pts[2*index + offset] = faceint;
+            //offset += 3;
+            offset++;
         }
     }
     else
@@ -544,10 +579,12 @@ __global__ void intersectBox(//float* rx, float* ry, float* rz,
     }
 }
 
-__global__ void intersectCylinder(float *rx, float *ry, float *rz,
-                                  float *vx, float *vy, float *vz,
+__global__ void intersectCylinder(//float *rx, float *ry, float *rz,
+                                  //float *vx, float *vy, float *vz,
+                                  Vec3<float> *origins, Vec3<float> *vel,
                                   const float r, const float h,
-                                  const int N, float *ts, float *pts)
+                                  const int N, float *ts, //float *pts)
+                                  Vec3<float> *pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     // This is done to prevent excess threads from interfering in the code.
@@ -560,8 +597,10 @@ __global__ void intersectCylinder(float *rx, float *ry, float *rz,
         /* The actual intersection calculations are carried out
          * by these two helper functions.
          */
-        intersectCylinderTopBottom(ts, pts, rx[index], ry[index], rz[index], vx[index], vy[index], vz[index], r, h, offset);
-        intersectCylinderSide(ts, pts, rx[index], ry[index], rz[index], vx[index], vy[index], vz[index], r, h, offset);
+        //intersectCylinderTopBottom(ts, pts, rx[index], ry[index], rz[index], vx[index], vy[index], vz[index], r, h, offset);
+        intersectCylinderTopBottom(ts, pts, origins[index], vel[index], r, h, offset);
+        //intersectCylinderSide(ts, pts, rx[index], ry[index], rz[index], vx[index], vy[index], vz[index], r, h, offset);
+        intersectCylinderSide(ts, pts, origins[index], vel[index], r, h, offset);
     }
 }
 
