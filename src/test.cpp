@@ -37,9 +37,9 @@ int main(int argc, char **argv)
      * each primative.
      */
     //std::shared_ptr<AbstractShape> b = std::make_shared<Box>(2, 2, 2);
-    std::shared_ptr<AbstractShape> b = std::make_shared<Cylinder>(2, 5);
+    //std::shared_ptr<AbstractShape> b = std::make_shared<Cylinder>(2, 5);
     //std::shared_ptr<AbstractShape> b = std::make_shared<Pyramid>(4, 4, 4);
-    //std::shared_ptr<AbstractShape> b = std::make_shared<Sphere>(3);
+    std::shared_ptr<AbstractShape> b = std::make_shared<Sphere>(3);
     // The "rays" vector stores pointers to the rays representing neutrons.
     std::vector< std::shared_ptr<Ray> > rays;
     /* These distributions are used for setting the ray positions for

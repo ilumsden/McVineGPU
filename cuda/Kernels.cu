@@ -656,10 +656,12 @@ __global__ void intersectPyramid(float *rx, float *ry, float *rz,
     }
 }
 
-__global__ void intersectSphere(float *rx, float *ry, float *rz,
-                                float *vx, float *vy, float *vz,
+__global__ void intersectSphere(//float *rx, float *ry, float *rz,
+                                //float *vx, float *vy, float *vz,
+                                Vec3<float> *origins, Vec3<float> *vel,
                                 const float radius,
-                                const int N, float *ts, float *pts)
+                                const int N, float *ts, //float *pts)
+                                Vec3<float> *pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     // This is done to prevent excess threads from interfering in the code.
@@ -672,11 +674,11 @@ __global__ void intersectSphere(float *rx, float *ry, float *rz,
          * (<x,y,z> = <x0,y0,z0>+t*<vx,vy,vz>) into the equation of
          * a Sphere.
          */
-        float a = 1;//dot(vx[index], vy[index], vz[index],
+        float a = (vel[index] | vel[index]);//dot(vx[index], vy[index], vz[index],
                       //vx[index], vy[index], vz[index]);
-        float b = 2; //* dot(rx[index], ry[index], rz[index],
+        float b = 2*(origins[index] | vel[index]);//2 * dot(rx[index], ry[index], rz[index],
                           //vx[index], vy[index], vz[index]);
-        float c = 1;//dot(rx[index], ry[index], rz[index],
+        float c = (origins[index] | origins[index]);//dot(rx[index], ry[index], rz[index],
                       //rx[index], ry[index], rz[index]);
         c -= radius*radius;
         /* The solveQuadratic function is used to calculate the
@@ -704,9 +706,10 @@ __global__ void intersectSphere(float *rx, float *ry, float *rz,
             else
             {
                 ts[2*index] = t0;
-                pts[6*index] = rx[index] + vx[index] * t0;
-                pts[6*index+1] = ry[index] + vy[index] * t0;
-                pts[6*index+2] = rz[index] + vz[index] * t0;
+                //pts[6*index] = rx[index] + vx[index] * t0;
+                //pts[6*index+1] = ry[index] + vy[index] * t0;
+                //pts[6*index+2] = rz[index] + vz[index] * t0;
+                pts[2*index] = origins[index] + (vel[index] * t0);
             }
             if (t1 < 0)
             {
@@ -715,9 +718,10 @@ __global__ void intersectSphere(float *rx, float *ry, float *rz,
             else
             {
                 ts[2*index + 1] = t1;
-                pts[6*index+3] = rx[index] + vx[index] * t1;
-                pts[6*index+4] = ry[index] + vy[index] * t1;
-                pts[6*index+5] = rz[index] + vz[index] * t1;
+                //pts[6*index+3] = rx[index] + vx[index] * t1;
+                //pts[6*index+4] = ry[index] + vy[index] * t1;
+                //pts[6*index+5] = rz[index] + vz[index] * t1;
+                pts[2*index + 1] = origins[index] + (vel[index] * t1);
             }
         }
         __syncthreads();

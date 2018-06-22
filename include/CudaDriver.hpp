@@ -10,7 +10,7 @@
 #include "Cylinder.hpp"
 //#include "Pyramid.hpp"
 #include "Ray.hpp"
-//#include "Sphere.hpp"
+#include "Sphere.hpp"
 
 /* This class controlls the execution of CUDA kernels.
  * Currently, it is mostly ment to be a convenient device for testing

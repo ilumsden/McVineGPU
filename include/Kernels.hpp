@@ -173,10 +173,12 @@ __global__ void intersectPyramid(float *rx, float *ry, float *rz,
  * and coordinates are stored in the ts and pts arrays respectively.
  * This function can be called from host.
  */
-__global__ void intersectSphere(float *rx, float *ry, float *rz,
-                                float *vx, float *vy, float *vz,
+__global__ void intersectSphere(//float *rx, float *ry, float *rz,
+                                //float *vx, float *vy, float *vz,
+                                Vec3<float> *origins, Vec3<float> *vel,
                                 const float radius,
-                                const int N, float *ts, float *pts);
+                                const int N, float *ts, //float *pts);
+                                Vec3<float> *pts);
 
 /* This function takes the times produced by the intersect functions above
  * for solids (i.e. Box, Sphere, Cylinder, etc.) and reduces the array so

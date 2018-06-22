@@ -27,6 +27,7 @@ add_library(cuMcVineLib STATIC
             ${CMAKE_SOURCE_DIR}/cuda/CudaDriver.cu 
             ${CMAKE_SOURCE_DIR}/cuda/Cylinder.cu
             ${CMAKE_SOURCE_DIR}/cuda/Kernels.cu
+            ${CMAKE_SOURCE_DIR}/cuda/Sphere.cu
             ${CMAKE_SOURCE_DIR}/include/AbstractShape.hpp
             ${CMAKE_SOURCE_DIR}/include/Box.hpp
             ${CMAKE_SOURCE_DIR}/include/Cylinder.hpp
@@ -34,6 +35,7 @@ add_library(cuMcVineLib STATIC
             ${CMAKE_SOURCE_DIR}/include/Error.hpp
             ${CMAKE_SOURCE_DIR}/include/Kernels.hpp
             ${CMAKE_SOURCE_DIR}/include/Ray.hpp
+            ${CMAKE_SOURCE_DIR}/include/Sphere.hpp
             ${CMAKE_SOURCE_DIR}/include/Vec3.hpp)
 
 target_compile_features(cuMcVineLib PUBLIC cxx_std_11)
