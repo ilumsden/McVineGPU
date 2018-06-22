@@ -5,8 +5,8 @@ project(McVineGPU LANGUAGES CXX CUDA)
 option(BUILD_TESTING "Build tests." OFF)
 
 file(GLOB cpu_source_files "${CMAKE_SOURCE_DIR}/src/*.cpp")
-file(GLOB gpu_source_files "${CMAKE_SOURCE_DIR}/cuda/*.cu")
-file(GLOB gpu_headers "${CMAKE_SOURCE_DIR}/include/*.hpp")
+#file(GLOB gpu_source_files "${CMAKE_SOURCE_DIR}/cuda/*.cu")
+#file(GLOB gpu_headers "${CMAKE_SOURCE_DIR}/include/*.hpp")
 if(BUILD_TESTING)
     file(GLOB test_cuda_src "${CMAKE_SOURCE_DIR}/test/*.cu")
     file(GLOB test_cuda_headers "${CMAKE_SOURCE_DIR}/test/*.hpp")
@@ -20,7 +20,19 @@ include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
 list(APPEND CMAKE_CUDA_FLAGS "-cudart static")
 
-add_library(cuMcVineLib STATIC ${gpu_source_files} ${gpu_headers})
+#add_library(cuMcVineLib STATIC ${gpu_source_files} ${gpu_headers})
+
+add_library(cuMcVineLib STATIC
+            ${CMAKE_SOURCE_DIR}/cuda/Box.cu 
+            ${CMAKE_SOURCE_DIR}/cuda/CudaDriver.cu 
+            ${CMAKE_SOURCE_DIR}/cuda/Kernels.cu
+            ${CMAKE_SOURCE_DIR}/include/AbstractShape.hpp
+            ${CMAKE_SOURCE_DIR}/include/Box.hpp
+            ${CMAKE_SOURCE_DIR}/include/CudaDriver.hpp
+            ${CMAKE_SOURCE_DIR}/include/Error.hpp
+            ${CMAKE_SOURCE_DIR}/include/Kernels.hpp
+            ${CMAKE_SOURCE_DIR}/include/Ray.hpp
+            ${CMAKE_SOURCE_DIR}/include/Vec3.hpp)
 
 target_compile_features(cuMcVineLib PUBLIC cxx_std_11)
 set_target_properties(cuMcVineLib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

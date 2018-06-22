@@ -69,7 +69,7 @@ int main(int argc, char **argv)
         for (int i = 0; i < 3; i++)
         {
             double velo = vel(re);
-            double pos = (i == 0) ? tmp->x : ((i == 1) ? tmp->y : tmp->z);
+            double pos = (i == 0) ? tmp->origin[0] : ((i == 1) ? tmp->origin[1] : tmp->origin[2]);
             if ((pos > 0 && velo > 0) || (pos < 0 && velo < 0))
             {
                 velo *= -1;

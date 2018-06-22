@@ -9,25 +9,36 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
+#include "Vec3.hpp"
+
 /* This function initializes the contents of the data array with the
  * value val.
  * This function can be called from host.
  */
-__global__ void initArray(float* data, const int size, const float val);
+template <typename T>
+__global__ void initArray(T* data, const int size, const T val)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for (int i = idx; i < size; i += stride)
+    {
+        data[i] = val;
+    }
+}
 
 /* This function calculates the dot product between vectors a and b.
  * This function can be called on device only.
  */
-__device__ float dot(float ax, float ay, float az,
-                     float bx, float by, float bz);
+//__device__ float dot(float ax, float ay, float az,
+//                     float bx, float by, float bz);
 
 /* This function calculates the cross product between
  * vectors a and b, and it stores the result in vector c.
  * This function can be called on device only.
  */
-__device__ void cross(float ax, float ay, float az,
-                      float bx, float by, float bz,
-                      float *cx, float *cy, float *cz);
+//__device__ void cross(float ax, float ay, float az,
+//                      float bx, float by, float bz,
+//                      float *cx, float *cy, float *cz);
 
 /* This function calculates the intersection time and point between
  * a neutron (represented by x, y, z, va, vb, and vc) and a
@@ -37,9 +48,12 @@ __device__ void cross(float ax, float ay, float az,
  * arrays.
  * This function can be called on device only.
  */
-__device__ void intersectRectangle(float* ts, float* pts, 
-                                   float x, float y, float z, float zdiff,
-                                   float va, float vb, float vc,
+__device__ void intersectRectangle(//float* ts, float* pts, 
+                                   float* ts, Vec3<float>* pts,
+                                   //float x, float y, float z, float zdiff,
+                                   const Vec3<float> &orig, float zdiff,
+                                   //float va, float vb, float vc,
+                                   const Vec3<float> &vel,
                                    const float A, const float B,
                                    const int key, const int groupSize,
                                    const int off1, int &off2);
@@ -104,10 +118,13 @@ __device__ bool solveQuadratic(float a, float b, float c, float &x0, float &x1);
  * and coordinates are stored in the ts and pts arrays respectively.
  * This function can be called from host.
  */
-__global__ void intersectBox(float* rx, float* ry, float* rz,
-                             float* vx, float* vy, float* vz,
+__global__ void intersectBox(//float* rx, float* ry, float* rz,
+                             Vec3<float>* origins,
+                             //float* vx, float* vy, float* vz,
+                             Vec3<float>* vel,
                              const float X, const float Y, const float Z,
-                             const int N, float* ts, float* pts);
+                             const int N, float* ts, //float* pts);
+                             Vec3<float>* pts);
 
 /* This function controlls the calculation of the intersections between
  * a collection of neutrons (represented by rx, ry, rz, vx, vy, and vz)

@@ -34,10 +34,12 @@ struct AbstractShape
      * by-reference to store the intersection times and
      * coordinates (int_times and int_coords).
      */
-    virtual void intersect(float *d_rx, float *d_ry, float *d_rz,
-                           float *d_vx, float *d_vy, float *d_vz,
+    virtual void intersect(//float *d_rx, float *d_ry, float *d_rz,
+                           //float *d_vx, float *d_vy, float *d_vz,
+                           Vec3<float> *d_origins, Vec3<float> *d_vel,
                            const int N, const int blockSize, const int numBlocks,
-                           std::vector<float> &int_times, std::vector<float> &int_coords) = 0;
+                           std::vector<float> &int_times,
+                           std::vector< Vec3<float> > &int_coords) = 0; //std::vector<float> &int_coords) = 0;
 
     /* Type is a string stating which primitive the object is.
      * This member might be removed later if it ends up being
