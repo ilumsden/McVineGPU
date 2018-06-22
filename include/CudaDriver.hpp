@@ -48,15 +48,16 @@ class CudaDriver
                                  //std::vector<float> &int_coords);
 
         // This function is used to initiate the scattering site calculation.
-        void findScatteringSites(//std::shared_ptr<AbstractShape> &b,
-                                 const std::vector<float> &int_times, 
-                                 const std::vector<float> &int_coords,
-                                 std::vector<float> &sites);
+        void findScatteringSites(const std::vector<float> &int_times, 
+                                 //const std::vector<float> &int_coords,
+                                 const std::vector< Vec3<float> > &int_coords,
+                                 //std::vector<float> &sites);
+                                 std::vector< Vec3<float> > &sites);
 
         // These members store the host-side copies of the neutron data.
-        float *rx, *ry, *rz, *vx, *vy, *vz;
+        //float *rx, *ry, *rz, *vx, *vy, *vz;
         // These members store the device-side copies of the neutron data.
-        float *d_rx, *d_ry, *d_rz, *d_vx, *d_vy, *d_vz;
+        //float *d_rx, *d_ry, *d_rz, *d_vx, *d_vy, *d_vz;
         Vec3<float> *origins, *vel;
         Vec3<float> *d_origins, *d_vel;
         // This int stores the number of neutrons (size of the above data).

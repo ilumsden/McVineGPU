@@ -202,7 +202,11 @@ __global__ void prepRand(curandState *state, int seed);
  * thread that this function is called from.
  * This function can be called on device only.
  */
-__device__ void randCoord(float* inters, float* time, float *sx, float *sy, float *sz, curandState *state);
+__device__ void randCoord(//float* inters, float* time, 
+                          //float *sx, float *sy, float *sz, 
+                          Vec3<float> *inters, float *time,
+                          Vec3<float> &pos,
+                          curandState *state);
 
 /* This function uses the intersection points (int_pts)
  * and times (ts) calculated by the intersect functions to choose 
@@ -213,7 +217,10 @@ __device__ void randCoord(float* inters, float* time, float *sx, float *sy, floa
  * scattering points.
  * This function can be called from host.
  */
-__global__ void calcScatteringSites(float* ts, float* int_pts, 
-                                    float* pos, curandState *state, const int N);
+__global__ void calcScatteringSites(//float* ts, float* int_pts, 
+                                    //float* pos, curandState *state, 
+                                    float *ts, Vec3<float> *int_pts,
+                                    Vec3<float> *pos, curandState *state,
+                                    const int N);
 
 #endif

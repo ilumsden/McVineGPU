@@ -752,28 +752,38 @@ __global__ void prepRand(curandState *state, int seed)
     curand_init(((seed << 10) + idx), 0, 0, &state[idx]); 
 }
 
-__device__ void randCoord(float* inters, float* time , float *sx, float *sy, float *sz, curandState *state)
+__device__ void randCoord(//float* inters, float* time, 
+                          //float *sx, float *sy, float *sz, 
+                          Vec3<float> *inters, float *time,
+                          Vec3<float> &pos,
+                          curandState *state)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     /* Instead of pasing the initial ray data, the two intersection
      * points and times are used to recalculate the velocities.
      */
     float dt = time[1] - time[0];
-    float mx = (inters[3] - inters[0])/dt;
-    float my = (inters[4] - inters[1])/dt;
-    float mz = (inters[5] - inters[2])/dt;
+    //float mx = (inters[3] - inters[0])/dt;
+    //float my = (inters[4] - inters[1])/dt;
+    //float mz = (inters[5] - inters[2])/dt;
+    Vec3<float> m = (inters[1] - inters[0]) * (1.0/dt);
     // cuRand is used to generate a random time between 0 and dt.
     float randt = curand_uniform(&(state[index]));
     randt *= dt;
     /* Basic kinematics are used to calculate the coordinates of
      * the randomly chosen scattering site.
      */
-    *sx = inters[0] + mx*randt;
-    *sy = inters[1] + my*randt;
-    *sz = inters[2] + mz*randt;
+    pos = inters[0] + (m*randt);
+    //*sx = inters[0] + mx*randt;
+    //*sy = inters[1] + my*randt;
+    //*sz = inters[2] + mz*randt;
 }
 
-__global__ void calcScatteringSites(float* ts, float* int_pts, float* pos, curandState *state, const int N)
+__global__ void calcScatteringSites(//float* ts, float* int_pts, 
+                                    //float* pos, curandState *state, 
+                                    float *ts, Vec3<float> *int_pts,
+                                    Vec3<float> *pos, curandState *state,
+                                    const int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     // This is done to prevent excess threads from interfering in the code.
@@ -792,21 +802,26 @@ __global__ void calcScatteringSites(float* ts, float* int_pts, float* pos, curan
              */
             if (ts[2*index] > ts[2*index+1])
             {
-                float tmpt, tmpc;
+                float tmpt;//, tmpc;
+                Vec3<float> tmpv;
                 tmpt = ts[2*index];
                 ts[2*index] = ts[2*index+1];
                 ts[2*index+1] = tmpt;
-                for (int i = 6*index; i < 6*index+3; i++)
+                tmpv = int_pts[2*index];
+                int_pts[2*index] = int_pts[2*index+1];
+                int_pts[2*index+1] = tmpv;
+                /*for (int i = 6*index; i < 6*index+3; i++)
                 {
                     tmpc = int_pts[i];
                     int_pts[i] = int_pts[i + 3];
                     int_pts[i + 3] = tmpc;
-                }
+                }*/
             }
             /* The randCoord function is called to determine the
              * scattering site.
              */
-            randCoord(&(int_pts[6*index]), &(ts[2*index]), &(pos[3*index + 0]), &(pos[3*index + 1]), &(pos[3*index + 2]), state);
+            //randCoord(&(int_pts[6*index]), &(ts[2*index]), &(pos[3*index + 0]), &(pos[3*index + 1]), &(pos[3*index + 2]), state);
+            randCoord(&(int_pts[2*index]), &(ts[2*index]), pos[index], state);
         }
     }
 }
