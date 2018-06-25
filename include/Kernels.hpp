@@ -18,6 +18,10 @@
 template <typename T>
 __global__ void initArray(T* data, const int size, const T val)
 {
+    /* This is done simply to allow the host compiler (g++, clang, etc.)
+     * to successfully compile the driver cpp file. When running,
+     * only the code in the __CUDA_ARCH__ block will be used.
+     */
 #if defined(__CUDA_ARCH__)
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
@@ -31,20 +35,6 @@ __global__ void initArray(T* data, const int size, const T val)
     }
 }
 
-/* This function calculates the dot product between vectors a and b.
- * This function can be called on device only.
- */
-//__device__ float dot(float ax, float ay, float az,
-//                     float bx, float by, float bz);
-
-/* This function calculates the cross product between
- * vectors a and b, and it stores the result in vector c.
- * This function can be called on device only.
- */
-//__device__ void cross(float ax, float ay, float az,
-//                      float bx, float by, float bz,
-//                      float *cx, float *cy, float *cz);
-
 /* This function calculates the intersection time and point between
  * a neutron (represented by x, y, z, va, vb, and vc) and a
  * rectangle (represented by A, B, and zdiff). The remaining
@@ -53,11 +43,8 @@ __global__ void initArray(T* data, const int size, const T val)
  * arrays.
  * This function can be called on device only.
  */
-__device__ void intersectRectangle(//float* ts, float* pts, 
-                                   float* ts, Vec3<float>* pts,
-                                   //float x, float y, float z, float zdiff,
+__device__ void intersectRectangle(float* ts, Vec3<float>* pts,
                                    const Vec3<float> &orig, float zdiff,
-                                   //float va, float vb, float vc,
                                    const Vec3<float> &vel,
                                    const float A, const float B,
                                    const int key, const int groupSize,
@@ -70,10 +57,7 @@ __device__ void intersectRectangle(//float* ts, float* pts,
  * correct spot in the ts and pts arrays.
  * This function can be called on device only.
  */
-__device__ void intersectCylinderSide(//float *ts, float *pts,
-                                      float *ts, Vec3<float> *pts,
-                                      //float x, float y, float z,
-                                      //float vx, float vy, float vz,
+__device__ void intersectCylinderSide(float *ts, Vec3<float> *pts,
                                       const Vec3<float> &orig,
                                       const Vec3<float> &vel,
                                       const float r, const float h,
@@ -86,10 +70,7 @@ __device__ void intersectCylinderSide(//float *ts, float *pts,
  * the ts and pts arrays.
  * This function can be called on device only.
  */
-__device__ void intersectCylinderTopBottom(//float *ts, float *pts,
-                                           float *ts, Vec3<float> *pts,
-                                           //float x, float y, float z,
-                                           //float vx, float vy, float vz,
+__device__ void intersectCylinderTopBottom(float *ts, Vec3<float> *pts,
                                            const Vec3<float> &orig,
                                            const Vec3<float> &vel,
                                            const float r, const float h,
@@ -104,29 +85,20 @@ __device__ void intersectCylinderTopBottom(//float *ts, float *pts,
  *
  * NOTE: this function is not yet working.
  */
-__device__ void intersectTriangle(//float *ts, float *pts,
-                                  float *ts, Vec3<float> *pts,
-                                  //const float x, const float y, const float z,
+__device__ void intersectTriangle(float *ts, Vec3<float> *pts,
                                   const Vec3<float> &orig,
-                                  //const float vx, const float vy, const float vz,
                                   const Vec3<float> &vel,
-                                  //const float aX, const float aY, const float aZ,
                                   const Vec3<float> &a,
-                                  //const float bX, const float bY, const float bZ,
                                   const Vec3<float> &b,
-                                  //const float cX, const float cY, const float cZ,
                                   const Vec3<float> &c,
                                   const int off1, int &off2);
-
-/*__device__ void calculateQuadCoef(float x, float vx, float vy, float vz,
-                                  float dist, float &disc,
-                                  float &a, float &b, float &c);*/
 
 /* This function solves the quadratic equation given values a, b, and c.
  * The results of the equation are stored in x0 and x1.
  * This function can be called on device only.
  */
-__device__ bool solveQuadratic(float a, float b, float c, float &x0, float &x1);
+__device__ bool solveQuadratic(float a, float b, float c, 
+                               float &x0, float &x1);
 
 /* This function controlls the calculation of the intersections between
  * a collection of neutrons (represented by rx, ry, rz, vx, vy, and vz)
@@ -135,13 +107,10 @@ __device__ bool solveQuadratic(float a, float b, float c, float &x0, float &x1);
  * and coordinates are stored in the ts and pts arrays respectively.
  * This function can be called from host.
  */
-__global__ void intersectBox(//float* rx, float* ry, float* rz,
-                             Vec3<float>* origins,
-                             //float* vx, float* vy, float* vz,
+__global__ void intersectBox(Vec3<float>* origins,
                              Vec3<float>* vel,
                              const float X, const float Y, const float Z,
-                             const int N, float* ts, //float* pts);
-                             Vec3<float>* pts);
+                             const int N, float* ts, Vec3<float>* pts);
 
 /* This function controlls the calculation of the intersections between
  * a collection of neutrons (represented by rx, ry, rz, vx, vy, and vz)
@@ -150,12 +119,9 @@ __global__ void intersectBox(//float* rx, float* ry, float* rz,
  * and coordinates are stored in the ts and pts arrays respectively.
  * This function can be called from host.
  */
-__global__ void intersectCylinder(//float *rx, float *ry, float *rz,
-                                  //float *vx, float *vy, float *vz,
-                                  Vec3<float> *origins, Vec3<float> *vel,
+__global__ void intersectCylinder(Vec3<float> *origins, Vec3<float> *vel,
                                   const float r, const float h,
-                                  const int N, float *ts, //float *pts);
-                                  Vec3<float> *pts);
+                                  const int N, float *ts, Vec3<float> *pts);
 
 /* This function controlls the calculation of the intersections between
  * a collection of neutrons (represented by rx, ry, rz, vx, vy, and vz)
@@ -167,12 +133,9 @@ __global__ void intersectCylinder(//float *rx, float *ry, float *rz,
  * NOTE: Because the intersectTriangle function is not yet working,
  *       this function is also not yet working.
  */
-__global__ void intersectPyramid(//float *rx, float *ry, float *rz,
-                                 //float *vx, float *vy, float *vz,
-                                 Vec3<float> *origins, Vec3<float> *vel,
+__global__ void intersectPyramid(Vec3<float> *origins, Vec3<float> *vel,
                                  const float X, const float Y, const float H,
-                                 const int N, float *ts, //float *pts);
-                                 Vec3<float> *pts);
+                                 const int N, float *ts, Vec3<float> *pts);
 
 /* This function controlls the calculation of the intersections between
  * a collection of neutrons (represented by rx, ry, rz, vx, vy, and vz)
@@ -181,12 +144,9 @@ __global__ void intersectPyramid(//float *rx, float *ry, float *rz,
  * and coordinates are stored in the ts and pts arrays respectively.
  * This function can be called from host.
  */
-__global__ void intersectSphere(//float *rx, float *ry, float *rz,
-                                //float *vx, float *vy, float *vz,
-                                Vec3<float> *origins, Vec3<float> *vel,
+__global__ void intersectSphere(Vec3<float> *origins, Vec3<float> *vel,
                                 const float radius,
-                                const int N, float *ts, //float *pts);
-                                Vec3<float> *pts);
+                                const int N, float *ts, Vec3<float> *pts);
 
 /* This function takes the times produced by the intersect functions above
  * for solids (i.e. Box, Sphere, Cylinder, etc.) and reduces the array so
@@ -196,7 +156,8 @@ __global__ void intersectSphere(//float *rx, float *ry, float *rz,
  * the number of times per neutron in ts.
  * This function can be called from host.
  */
-__global__ void simplifyTimes(const float* ts, const int N, const int groupSize, float* simp);
+__global__ void simplifyTimes(const float* ts, const int N, 
+                              const int groupSize, float* simp);
 
 /* This function seeds and initializes a cuRand random number generator
  * using the cuRand States stored in state and the seed value "seed."
@@ -210,9 +171,7 @@ __global__ void prepRand(curandState *state, int seed);
  * thread that this function is called from.
  * This function can be called on device only.
  */
-__device__ void randCoord(//float* inters, float* time, 
-                          //float *sx, float *sy, float *sz, 
-                          Vec3<float> *inters, float *time,
+__device__ void randCoord(Vec3<float> *inters, float *time,
                           Vec3<float> &pos,
                           curandState *state);
 
@@ -225,9 +184,7 @@ __device__ void randCoord(//float* inters, float* time,
  * scattering points.
  * This function can be called from host.
  */
-__global__ void calcScatteringSites(//float* ts, float* int_pts, 
-                                    //float* pos, curandState *state, 
-                                    float *ts, Vec3<float> *int_pts,
+__global__ void calcScatteringSites(float *ts, Vec3<float> *int_pts,
                                     Vec3<float> *pos, curandState *state,
                                     const int N);
 
