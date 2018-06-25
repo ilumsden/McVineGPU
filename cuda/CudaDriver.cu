@@ -98,7 +98,7 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b,
     b->intersect(d_origins, d_vel, N, blockSize, numBlocks, host_time, int_coords);
     // Opens a file stream and prints the relevant data to time.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
-    /*std::fstream fout;
+    std::fstream fout;
     fout.open("time.txt", std::ios::out);
     if (!fout.is_open())
     {
@@ -131,7 +131,7 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b,
                  << std::fixed << std::setprecision(5) << std::setw(8) << std::right << buf << " / " << int_coords[i][1] << "\n";
             fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << " | "
                  << std::fixed << std::setprecision(5) << std::setw(8) << std::right << buf << " / " << int_coords[i][2] << "\n";
-        }*/
+        }
         /*if (i % 6 == 0)
         {
             int ind = i/6;
@@ -153,9 +153,9 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b,
             fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << " | "
                  << std::fixed << std::setprecision(5) << std::setw(8) << std::right << buf << " / " << int_coords[i] << "\n";
         }*/
-    /*}
+    }
     // Closes the file stream
-    fout.close();*/
+    fout.close();
     return;
 }
 
@@ -273,7 +273,7 @@ void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("handleRectIntersect: %f\n", time);
-    // Creates the vector that will store the scattering coordinates
+    /*// Creates the vector that will store the scattering coordinates
     //std::vector<float> scattering_sites;
     std::vector< Vec3<float> > scattering_sites;
     // Starts the scattering site calculation
@@ -281,5 +281,5 @@ void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
     findScatteringSites(int_times, int_coords, scattering_sites);
     stop = std::chrono::steady_clock::now();
     time = std::chrono::duration<double>(stop - start).count();
-    printf("findScatteringSites: %f\n", time);
+    printf("findScatteringSites: %f\n", time);*/
 }

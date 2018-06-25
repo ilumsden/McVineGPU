@@ -104,12 +104,18 @@ __device__ void intersectCylinderTopBottom(//float *ts, float *pts,
  *
  * NOTE: this function is not yet working.
  */
-__device__ void intersectTriangle(float *ts, float *pts,
-                                  const float x, const float y, const float z,
-                                  const float vx, const float vy, const float vz,
-                                  const float aX, const float aY, const float aZ,
-                                  const float bX, const float bY, const float bZ,
-                                  const float cX, const float cY, const float cZ,
+__device__ void intersectTriangle(//float *ts, float *pts,
+                                  float *ts, Vec3<float> *pts,
+                                  //const float x, const float y, const float z,
+                                  const Vec3<float> &orig,
+                                  //const float vx, const float vy, const float vz,
+                                  const Vec3<float> &vel,
+                                  //const float aX, const float aY, const float aZ,
+                                  const Vec3<float> &a,
+                                  //const float bX, const float bY, const float bZ,
+                                  const Vec3<float> &b,
+                                  //const float cX, const float cY, const float cZ,
+                                  const Vec3<float> &c,
                                   const int off1, int &off2);
 
 /*__device__ void calculateQuadCoef(float x, float vx, float vy, float vz,
@@ -161,10 +167,12 @@ __global__ void intersectCylinder(//float *rx, float *ry, float *rz,
  * NOTE: Because the intersectTriangle function is not yet working,
  *       this function is also not yet working.
  */
-__global__ void intersectPyramid(float *rx, float *ry, float *rz,
-                                 float *vx, float *vy, float *vz,
+__global__ void intersectPyramid(//float *rx, float *ry, float *rz,
+                                 //float *vx, float *vy, float *vz,
+                                 Vec3<float> *origins, Vec3<float> *vel,
                                  const float X, const float Y, const float H,
-                                 const int N, float *ts, float *pts);
+                                 const int N, float *ts, //float *pts);
+                                 Vec3<float> *pts);
 
 /* This function controlls the calculation of the intersections between
  * a collection of neutrons (represented by rx, ry, rz, vx, vy, and vz)

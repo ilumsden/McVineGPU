@@ -338,122 +338,60 @@ __device__ void intersectCylinderTopBottom(//float *ts, float *pts,
 /* This function is not yet working.
  * As a result, it will not yet be commented.
  */
-__device__ void intersectTriangle(float *ts, float *pts,
-                                  const float x, const float y, const float z,
-                                  const float vx, const float vy, const float vz,
-                                  const float aX, const float aY, const float aZ, 
-                                  const float bX, const float bY, const float bZ,
-                                  const float cX, const float cY, const float cZ,
+__device__ void intersectTriangle(//float *ts, float *pts,
+                                  float *ts, Vec3<float> *pts,
+                                  //const float x, const float y, const float z,
+                                  const Vec3<float> &orig,
+                                  //const float vx, const float vy, const float vz,
+                                  const Vec3<float> &vel,
+                                  //const float aX, const float aY, const float aZ, 
+                                  const Vec3<float> &a,
+                                  //const float bX, const float bY, const float bZ,
+                                  const Vec3<float> &b,
+                                  //const float cX, const float cY, const float cZ,
+                                  const Vec3<float> &c,
                                   const int off1, int &off2)
 {   
-    /*int index = blockIdx.x * blockDim.x + threadIdx.x;
-    float abX = bX - aX, abY = bY - aY, abZ = bZ - aZ;
-    float acX = cX - aX, acY = cY - aY, acZ = cZ - aZ;
-    float nX, nY, nZ;
-    cross(abX, abY, abZ, acX, acY, acZ, &nX, &nY, &nZ);
-    float nLength = fabsf(nX)*fabsf(nX)+fabsf(nY)*fabsf(nY)+fabsf(nZ)*fabsf(nZ);
-    nLength = sqrtf(nLength);
-    nX /= nLength; nY /= nLength; nZ /= nLength;
-    float ndv = dot(nX, nY, nZ, vx, vy, vz);
-    if (fabsf(ndv) < 1e-7)
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    const float EPSILON = 1e-7;
+    Vec3<float> edge1, edge2, h, s, q;
+    float z, f, u, v;
+    edge1 = b - a;
+    edge2 = c - a;
+    h = vel * edge2;
+    z = edge1 | h;
+    if (fabsf(z) < EPSILON)
     {
         ts[5*index + off1] = -1;
         return;
     }
-    float d = dot(nX, nY, nZ, aX, aY, aZ);
-    float t = (dot(nX, nY, nZ, x, y, z) + d) / ndv;
-    if (t < 0)
+    f = 1/z;
+    s = orig - a;
+    u = f * (s | h);
+    if (u < 0 || u > 1)
     {
-        printf("time < 0\n");
         ts[5*index + off1] = -1;
         return;
     }
-    float pX = x + vx*t, pY = y + vy*t, pZ = z + vz*t;
-    float apX = pX - aX, apY = pY - aY, apZ = pZ - aZ;
-    float edge1X = cX - bX, edge1Y = cY - bY, edge1Z = cZ - bZ;
-    float bpX = pX - bX, bpY = pY - bY, bpZ = pZ - bZ;
-    float cpX = pX - cX, cpY = pY - cY, cpZ = pZ - cZ;
-    float c0X, c0Y, c0Z, c1X, c1Y, c1Z, c2X, c2Y, c2Z;
-    cross(abX, abY, abZ, apX, apY, apZ, &c0X, &c0Y, &c0Z);
-    cross(edge1X, edge1Y, edge1Z, bpX, bpY, bpZ, &c1X, &c1Y, &c1Z);
-    cross(-acX, -acY, -acZ, cpX, cpY, cpZ, &c2X, &c2Y, &c2Z);
-    if (dot(nX, nY, nZ, c0X, c0Y, c0Z) < 0 ||
-        dot(nX, nY, nZ, c1X, c1Y, c1Z) < 0 ||
-        dot(nX, nY, nZ, c2X, c2Y, c2Z) < 0)
+    q = s * edge1;
+    v = f * (vel | q);
+    if (v < 0 || u+v > 1)
     {
-        ts[5*index+off1] = -1;
+        ts[5*index + off1] = -1;
+        return;
+    }
+    float t = f * (edge2 | q);
+    if (t < EPSILON)
+    {
+        ts[5*index + off1] = -1;
         return;
     }
     ts[5*index + off1] = t;
-    if (off2 == 0 || off2 == 3)
+    if (off2 < 2)
     {
-        pts[6*index + off2] = pX;
-        pts[6*index + off2 + 1] = pY;
-        pts[6*index + off2 + 2] = pZ;
-        off2 += 3;
+        pts[2*index + off2] = orig + vel*t;
+        off2++;
     }
-    //__syncthreads();
-    return;*/
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    float abX = bX - aX, abY = bY - aY, abZ = bZ - aZ;
-    float acX = cX - aX, acY = cY - aY, acZ = cZ - aZ;
-    //float nX, nY, nZ;
-    float nX = 0;float nY = 0; float nZ = 0;
-    //cross(abX, abY, abZ, acX, acY, acZ, &nX, &nY, &nZ);
-    float nLength = fabsf(nX)*fabsf(nX)+fabsf(nY)*fabsf(nY)+fabsf(nZ)*fabsf(nZ);
-    nLength = sqrtf(nLength);
-    nX /= nLength; nY /= nLength; nZ /= nLength;
-    //float d = dot(nX, nY, nZ, aX, aY, aZ);
-    float d = 0;
-    //float v_p = dot(nX, nY, nZ, vx, vy, vz);
-    float v_p = 2;
-    if (fabsf(v_p) < 1e-7)
-    {
-        ts[5*index + off1] = -1;
-        return;
-    }
-    //float r_p = dot(nX, nY, nZ, x, y, z);
-    float r_p = 0;
-    float t = (d - r_p)/v_p;
-    //printf("index = %i\n    abX = %f abY = %f abZ = %f\n    acX = %f acY = %f acZ = %f\n    nX = %f nY = %f nZ = %f\n    d = %f r_p = %f v_p = %f\n    t = %f\n", index, abX, abY, abZ, acX, acY, acZ, nX, nY, nZ, d, r_p, v_p, t);
-    float pX = x + vx*t, pY = y + vy*t, pZ = z + vz*t;
-    float apX = pX - aX, apY = pY - aY, apZ = pZ - aZ;
-    float ncX, ncY, ncZ;
-    //cross(nX, nY, nZ, acX, acY, acZ, &ncX, &ncY, &ncZ);
-    //float c1 = dot(apX, apY, apZ, ncX, ncY, ncZ)/dot(abX, abY, abZ, ncX, ncY, ncZ);
-    float c1 = 0;
-    if (c1 < 0)
-    {
-        ts[5*index + off1] = -1;
-        return;
-    }
-    float nbX, nbY, nbZ;
-    //cross(nX, nY, nZ, abX, abY, abZ, &nbX, &nbY, &nbZ);
-    //float c2 = dot(apX, apY, apZ, nbX, nbY, nbZ)/dot(acX, acY, acZ, nbX, nbY, nbZ);
-    float c2 = 0;
-    if (c2 < 0)
-    {
-        ts[5*index + off1] = -1;
-        return;
-    }
-    if (c1+c2 > 1)
-    {
-        ts[5*index + off1] = -1;
-        return;
-    }
-    // Set time to actual value and record pX, pY, and pZ as int pts.
-    // ascii(T) = 84
-    ts[5*index + off1] = t + 84;
-    if (off2 == 0 || off2 == 3)
-    {
-        pts[6*index + off2] = pX;
-        pts[6*index + off2 + 1] = pY;
-        pts[6*index + off2 + 2] = pZ;
-        //printf("index = %i: time = %f\n    x = %f y = %f z = %f\n    vx = %f vy = %f vz = %f\n    pX = %f pY = %f pZ = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n", index, t, x, y, z, vx, vy, vz, pX, pY, pZ, 6*index+off2, pts[6*index + off2], 6*index+off2+1, pts[6*index + off2+1], 6*index+off2+2, pts[6*index + off2+2]);
-        off2 += 3;
-        //printf("Triangle: index = %i    off2 = %i\n", index, off2);
-    }
-    __syncthreads();
 }
 
 /*__device__ void calculateQuadCoef(float x, float vx, float vy, float vz,
@@ -604,10 +542,12 @@ __global__ void intersectCylinder(//float *rx, float *ry, float *rz,
     }
 }
 
-__global__ void intersectPyramid(float *rx, float *ry, float *rz,
-                                 float *vx, float *vy, float *vz,
+__global__ void intersectPyramid(//float *rx, float *ry, float *rz,
+                                 //float *vx, float *vy, float *vz,
+                                 Vec3<float> *origins, Vec3<float> *vel,
                                  const float X, const float Y, const float H,
-                                 const int N, float *ts, float *pts)
+                                 const int N, float *ts, //float *pts)
+                                 Vec3<float> *pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     // This is done to prevent excess threads from interfering in the code.
@@ -622,34 +562,63 @@ __global__ void intersectPyramid(float *rx, float *ry, float *rz,
          * the intersectRectangle function is used to determine any
          * intersection point.
          */
-        if (vz[index] != 0)
+        //if (vz[index] != 0)
+        if (vel[index][2] != 0)
         {
             //intersectRectangle(ts, pts, rx[index], ry[index], rz[index], -H, vx[index], vy[index], vz[index], X, Y, 0, 5, 0, offset);
-            return;
+            intersectRectangle(ts, pts, origins[index], -H, vel[index], X, Y, 0, 5, 0, offset);
         }
         /* These calls to intersectTriangle determine if there are
          * any intersections between the neutron and the triangular
          * faces of the Pyramid.
          */
+        //intersectTriangle(ts, pts,
+        //                  rx[index], ry[index], rz[index],
+        //                  vz[index], vy[index], vz[index],
+        //                  0, 0, 0, X/2, Y/2, -H, X/2, -Y/2, -H,
+        //                  1, offset);
         intersectTriangle(ts, pts,
-                          rx[index], ry[index], rz[index],
-                          vz[index], vy[index], vz[index],
-                          0, 0, 0, X/2, Y/2, -H, X/2, -Y/2, -H,
+                          origins[index],
+                          vel[index],
+                          Vec3<float>(0, 0, 0),
+                          Vec3<float>(X/2, Y/2, -H),
+                          Vec3<float>(X/2, -Y/2, -H),
                           1, offset);
+        //intersectTriangle(ts, pts,
+        //                  rx[index], ry[index], rz[index],
+        //                  vz[index], vy[index], vz[index],
+        //                  0, 0, 0, X/2, -Y/2, -H, -X/2, -Y/2, -H,
+        //                  2, offset);
         intersectTriangle(ts, pts,
-                          rx[index], ry[index], rz[index],
-                          vz[index], vy[index], vz[index],
-                          0, 0, 0, X/2, -Y/2, -H, -X/2, -Y/2, -H,
+                          origins[index],
+                          vel[index],
+                          Vec3<float>(0, 0, 0),
+                          Vec3<float>(X/2, -Y/2, -H),
+                          Vec3<float>(-X/2, -Y/2, -H),
                           2, offset);
+        //intersectTriangle(ts, pts,
+        //                  rx[index], ry[index], rz[index],
+        //                  vz[index], vy[index], vz[index],
+        //                  0, 0, 0, -X/2, -Y/2, -H, -X/2, Y/2, -H,
+        //                  3, offset);
         intersectTriangle(ts, pts,
-                          rx[index], ry[index], rz[index],
-                          vz[index], vy[index], vz[index],
-                          0, 0, 0, -X/2, -Y/2, -H, -X/2, Y/2, -H,
+                          origins[index],
+                          vel[index],
+                          Vec3<float>(0, 0, 0),
+                          Vec3<float>(-X/2, -Y/2, -H),
+                          Vec3<float>(-X/2, Y/2, -H),
                           3, offset);
+        //intersectTriangle(ts, pts,
+        //                  rx[index], ry[index], rz[index],
+        //                  vz[index], vy[index], vz[index],
+        //                  0, 0, 0, -X/2, Y/2, -H, X/2, Y/2, -H,
+        //                  4, offset);
         intersectTriangle(ts, pts,
-                          rx[index], ry[index], rz[index],
-                          vz[index], vy[index], vz[index],
-                          0, 0, 0, -X/2, Y/2, -H, X/2, Y/2, -H,
+                          origins[index],
+                          vel[index],
+                          Vec3<float>(0, 0, 0),
+                          Vec3<float>(-X/2, Y/2, -H),
+                          Vec3<float>(X/2, Y/2, -H),
                           4, offset);
         __syncthreads();
         //printf("index = %i:\n    ts[%i] = %f ts[%i] = %f ts[%i] = %f ts[%i] = %f ts[%i] = %f\n    rx[%i] = %f ry[%i] = %f rz[%i] = %f\n    vx[%i] = %f vy[%i] = %f vz[%i] = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n", index, 5*index, ts[5*index], 5*index+1, ts[5*index+1], 5*index+2, ts[5*index+2], 5*index+3, ts[5*index+3], 5*index+4, ts[5*index+4], index, rx[index], index, ry[index], index, rz[index], index, vx[index], index, vy[index], index, vz[index], 6*index, pts[6*index], 6*index+1, pts[6*index+1], 6*index+2, pts[6*index+2], 6*index+3, pts[6*index+3], 6*index+4, pts[6*index+4], 6*index+5, pts[6*index+5]);
