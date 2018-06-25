@@ -36,8 +36,8 @@ int main(int argc, char **argv)
     /* These lines create the AbstractShape pointer used for testing
      * each primative.
      */
-    std::shared_ptr<AbstractShape> b = std::make_shared<Box>(2, 2, 2);
-    //std::shared_ptr<AbstractShape> b = std::make_shared<Cylinder>(2, 5);
+    //std::shared_ptr<AbstractShape> b = std::make_shared<Box>(2, 2, 2);
+    std::shared_ptr<AbstractShape> b = std::make_shared<Cylinder>(2, 5);
     //std::shared_ptr<AbstractShape> b = std::make_shared<Pyramid>(4, 4, 4);
     //std::shared_ptr<AbstractShape> b = std::make_shared<Sphere>(3);
     // The "rays" vector stores pointers to the rays representing neutrons.
@@ -69,7 +69,7 @@ int main(int argc, char **argv)
         for (int i = 0; i < 3; i++)
         {
             double velo = vel(re);
-            double pos = (i == 0) ? tmp->x : ((i == 1) ? tmp->y : tmp->z);
+            double pos = (i == 0) ? tmp->origin[0] : ((i == 1) ? tmp->origin[1] : tmp->origin[2]);
             if ((pos > 0 && velo > 0) || (pos < 0 && velo < 0))
             {
                 velo *= -1;

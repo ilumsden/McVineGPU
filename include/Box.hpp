@@ -1,7 +1,6 @@
 #ifndef BOX_HPP
 #define BOX_HPP
 
-//#include "WhateverTheVisitorFileIsCalled"
 #include "AbstractShape.hpp"
 
 /* The struct defining the Box primitive.
@@ -24,19 +23,16 @@ struct Box : public AbstractShape
     }
 
     ~Box() { ; }
-
-    // See the corresponding comment in AbstractShape.hpp
-    //virtual void accept(UnaryVisitor &v) override;
     
     /* The function that handles the calculation of the intersection
      * points and times between the Box object and the neutrons represented
-     * by d_rx, d_ry, d_rz, d_vx, d_vy, and d_vz.
+     * by d_origins and d_vel.
      */
-    virtual void intersect(float *d_rx, float *d_ry, float *d_rz,
-                           float *d_vx, float *d_vy, float *d_vz,
+    virtual void intersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
                            const int N, const int blockSize, const int numBlocks,
-                           std::vector<float> &int_times, std::vector<float> &int_coords) override;
-
+                           std::vector<float> &int_times,
+                           std::vector< Vec3<float> > &int_coords) override;
+ 
     // These members store the Box's side lengths in the X, Y, and Z directions.
     double X, Y, Z;
 };

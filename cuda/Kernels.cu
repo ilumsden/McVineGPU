@@ -2,98 +2,41 @@
 
 #include "Kernels.hpp"
 
-__global__ void initArray(float *data, int size, const float val)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int stride = blockDim.x * gridDim.x;
-    for (int i = idx; i < size; i += stride)
-    {
-        data[i] = val;
-    }
-}
-
-__device__ float dot(float ax, float ay, float az,
-                     float bx, float by, float bz)
-{
-    return ax*bx + ay*by + az*bz;
-}
-
-__device__ void cross(float ax, float ay, float az,
-                      float bx, float by, float bz,
-                      float *cx, float *cy, float *cz)
-{
-    *cx = ay*bz - az*by;
-    *cy = az*bx - ax*bz;
-    *cz = ax*by - by*bx;
-    return;
-}
-
-__device__ void intersectRectangle(float* ts, float* pts,
-                                   float x, float y, float z, float zdiff,
-                                   float va, float vb, float vc, 
+__device__ void intersectRectangle(float* ts, Vec3<float>* pts,
+                                   const Vec3<float> &orig, float zdiff,
+                                   const Vec3<float> &vel,
                                    const float A, const float B,
                                    const int key, const int groupSize, 
                                    const int off1, int &off2)
 {
-    /* Subtracting zdiff from z effectively makes the rectangle
-     * be in the same plane as the local (function-specific) XY plane.
+    /* The system is temporarily shifted so that the plane potentially
+     * being intersected lies along a coordinate plane (i.e. if the
+     * shift is in z, the system is shifted so that the rectangle lies
+     * entirely in the XY-plane. This shift is represented by c.
+     * The time is then calculated using kinematics on the
+     * shifted system. 
      */
-    z -= zdiff;
-    /* Calculates t using the basic kinematic equation z1 = z + vz*t
-     * Note that z1 is always 0 due to the subtraction above.
+    float c = orig[2-key] - zdiff;
+    float t = (0-c)/vel[2-key];
+    /* From this point on, the system is no longer shifted.
+     * The intersection point is calculated using basic kinematics.
      */
-    float t = (0-z)/vc;
-    /* Uses the same kinematic equation as above to calculate the local
-     * x and y intersection coordinates from the time.
-     */
-    float r1x = x+va*t; 
-    float r1y = y+vb*t;
+    Vec3<float> pt = orig + vel*t;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
+    /* These nested if-statements convert the key into a pair of
+     * values that are used to ensure the intersection point is
+     * within the rectangle.
+     */
+    int n1 = (key == 0 || key == 1) ? 0 : 1;
+    int n2 = (key == 1 || key == 2) ? 2 : 1;
     // This if-statement ensures the intersection is within the rectangle.
-    if (fabsf(r1x) < (A/2) && fabsf(r1y) < (B/2))
+    if (fabsf(pt[n1]) < (A/2) && fabsf(pt[n2]) < (B/2))
     {
-        /* The key parameter represents the relationship between this
-         * function's local XYZ-coordinate system and the coordinate
-         * system of the overall solid. If key is 0, the coordinate
-         * systems are the same. If key is 1, the local X matches the
-         * solid's Y; the local Y matches the solid's Z; and the local
-         * Z matches the solid's X. If key is 2, the local X matches the
-         * solid's Z; the local Y matches the solid's X; and the local
-         * Z matches the solid's Y.
-         * The intersection coordinates in the solid's coordinate system
-         * are stored in ix, iy, and iz.
-         */
-        float ix, iy, iz;
-        if (key == 0)
+        if (off2 < 2)
         {
-            ix = r1x;
-            iy = r1y;
-            iz = zdiff;
-        }
-        else if (key == 1)
-        {
-            iy = r1x;
-            iz = r1y;
-            ix = zdiff;
-        }
-        else
-        {
-            iz = r1x;
-            ix = r1y;
-            iy = zdiff;
-        }
-        /* This if-statement ensures at most 2 intersection
-         * points are stored.
-         */
-        if (off2 == 0 || off2 == 3)
-        {
-            // Stores ix, iy, and iz in the pts array.
-            pts[6*index + off2] = ix;
-            pts[6*index + off2 + 1] = iy;
-            pts[6*index + off2 + 2] = iz;
+            pts[2*index + off2] = pt;
             // Increases off2 to prevent data overwrite.
-            off2 += 3;
-            //printf("Rectangle: index = %i    off2 = %i\n", index, off2);
+            off2++;
         }
         ts[off1 + index*groupSize] = t;
     }
@@ -107,57 +50,40 @@ __device__ void intersectRectangle(float* ts, float* pts,
     }
 }
 
-__device__ void intersectCylinderSide(float *ts, float *pts,
-                                      float x, float y, float z,
-                                      float vx, float vy, float vz,
+__device__ void intersectCylinderSide(float *ts, Vec3<float> *pts,
+                                      const Vec3<float> &orig,
+                                      const Vec3<float> &vel,
                                       const float r, const float h, 
                                       int &offset)
 {
-    /* NOTE: This function is based on the corresponding function
-     *       from ArrowIntersector in McVine. As a result, the
-     *       solveQuadratic function below is not used here.
-     *       It will likely be refactored later to include
-     *       said function.
-     */
     /* Calculate the a, b, and c parameters for the quadratic formula.
      * The parameters are generated by substituting the x and y
      * components of the neutron's ray equation into the equation for
      * a circular Cylinder. The final equation is:
      *    (vx^2 + vy^2)*t^2 + 2(x*vx + y*vy)*t + (x^2 + y^2 + r^2) = 0
-     *
-     * Note: The 2 that should be part of b base on the above equation
-     *       is not included because it can be combined with the
-     *       4 from the 4ac part of the quadratic formula. This combination
-     *       is then cancelled by the 2 in the denominator of the
-     *       quadratic formula.
      */ 
-    float a = vx*vx + vy*vy;
-    float b = x*vx + y*vy;
-    float c = x*x+y*y - r*r;
-    // discr is the discriminant of the quadratic formula (b^2 - 4ac).
-    float discr = b*b - a*c;
-    float t;
+    float a = vel[0]*vel[0] + vel[1]*vel[1];
+    float b = 2*(orig[0]*vel[0] + orig[1]*vel[1]);
+    float c = orig[0]*orig[0] + orig[1]*orig[1] - r*r; 
+    float t0, t1;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    /* If the discriminant is less than 0, then there are no real roots
-     * to the quadratic equation that defines t. As a result, the times
-     * in ts are set to the default no-solution value of -1.
+    /* If the solveQuadratic function returns false, there are no
+     * valid intersection times. As a result, there is no
+     * intersection with the Cylinder's side, and the corresponding
+     * times are set accordingly.
      */
-    if (discr < 0)
+    if (!solveQuadratic(a, b, c, t0, t1))
     {
         ts[4*index + 2] = -1;
         ts[4*index + 3] = -1;
-        return;
     }
-    /* If the discriminant equals 0, there can only be one possible
-     * time and, thus, only one possible intersection with the side
-     * of the Cylinder.
+    /* In this case, there is a valid intersection with the Cylinder's 
+     * side. However, since t0 < 0 and since t0 is guaranteed to be
+     * less than t1 (see solveQuadratic), there is only one valid
+     * intersection time.
      */
-    else if (discr == 0)
+    else if (t0 < 0)
     {
-        /* Calculates time from a simplified, case-specific version of the
-         * quadratic formula.
-         */
-        t = -b/a;
         /* ts[4*index + 3] stores the time of the second intersection
          * between the neutron and the side of the Cylinder. Since a
          * second intersection is not possible in this case, this element
@@ -168,16 +94,14 @@ __device__ void intersectCylinderSide(float *ts, float *pts,
          * if the absolute value of the Z-coordinate of the intersection
          * point is less than h/2.
          */
-        if (fabsf(z+vz*t) < h/2)
+        if (fabsf(orig[2]+vel[2]*t1) < h/2)
         {
-            ts[4*index + 2] = t;
+            ts[4*index + 2] = t1;
             // See intersectRectangle
-            if (offset == 0 || offset == 3)
+            if (offset < 2)
             {
-                pts[6*index + offset] = x+vx*t;
-                pts[6*index + offset + 1] = y+vy*t;
-                pts[6*index + offset + 2] = z+vz*t;
-                offset += 3;
+                pts[2*index + offset] = orig + (vel*t1);
+                offset++;
             }
         }
         else
@@ -185,89 +109,82 @@ __device__ void intersectCylinderSide(float *ts, float *pts,
             ts[4*index + 2] = -1;
         }
     }
-    // Used to prevent memory corruption.
-    __syncthreads();
-    // i is used to track the offset for ts
-    int i = 2;
-    // t is calculated using the quadratic formula with +
-    discr = sqrtf(discr);
-    t = (-b+discr)/a;
-    if (fabsf(z+vz*t) < h/2)
+    // In this case, there are two valid intersection times.
+    else
     {
-        ts[4*index + i] = t;
-        i++;
-        if (offset == 0 || offset == 3)
+        // i is used to track the offset for ts
+        int i = 2;
+        if (fabsf(orig[2]+vel[2]*t0) < h/2)
         {
-            pts[6*index + offset] = x+vx*t;
-            pts[6*index + offset + 1] = y+vy*t;
-            pts[6*index + offset + 2] = z+vz*t;
-            offset += 3;
+            ts[4*index + i] = t0;
+            i++;
+            if (offset < 2)
+            {
+                pts[2*index + offset] = orig + (vel*t0);
+                offset++;
+            }
         }
-    }
-    // t is calculated using the quadratic formula with -
-    t = (-b-discr)/a;
-    if (fabsf(z+vz*t) < h/2)
-    {
-        ts[4*index + i] = t;
-        i++;
-        if (offset == 0 || offset == 3)
+        if (fabsf(orig[2]+vel[2]*t1) < h/2)
         {
-            pts[6*index + offset] = x+vx*t;
-            pts[6*index + offset + 1] = y+vy*t;
-            pts[6*index + offset + 2] = z+vz*t;
-            offset += 3;
+            ts[4*index + i] = t1;
+            i++;
+            if (offset < 2)
+            {
+                pts[2*index + offset] = orig + (vel*t1);
+                offset++;
+            }
         }
-    }
-    /* If i < 4, at least one time was not set in ts.
-     * This if-statement will set the time of these unset
-     * elements to -1.
-     */
-    if (i < 4)
-    {
-        for (int j = i; j < 4; j++)
+        /* If i < 4, at least one time was not set in ts.
+         * This if-statement will set the time of these unset
+         * elements to -1.
+         */
+        if (i < 4)
         {
-            ts[4*index + j] = -1;
+            for (int j = i; j < 4; j++)
+            {
+                ts[4*index + j] = -1;
+            }
         }
     }
     // Again used to prevent memory corruption
     __syncthreads();
 }
 
-__device__ void intersectCylinderTopBottom(float *ts, float *pts,
-                                           float x, float y, float z,
-                                           float vx, float vy, float vz,
+__device__ void intersectCylinderTopBottom(//float *ts, float *pts,
+                                           float *ts, Vec3<float> *pts,
+                                           //float x, float y, float z,
+                                           //float vx, float vy, float vz,
+                                           const Vec3<float> &orig,
+                                           const Vec3<float> &vel,
                                            const float r, const float h,
                                            int &offset)
 {
     // Calculates values needed to evaluate and validate the time.
     float r2 = r*r;
     float hh = h/2;
-    float x1, y1;
+    Vec3<float> faceint;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     /* Time is calculated by dividing the Z-distance the neutron has
      * to travel to reach the Z-coordinate of the top of the Cylinder
      * by the Z component of the neutron's velocity.
      */
-    float t = (hh-z)/vz;
+    float t = (hh-orig[2])/vel[2];
     /* Uses basic kinematics to determine the X and Y 
      * coordinates of the potential intersection point.
      */
-    x1 = x + vx*t;
-    y1 = y + vy*t;
+    faceint = orig + (vel * t);
     /* If the intersection point is a valid solution to the
      * equation defining the circular top of the Cylinder, 
      * the time and intersection coordinates are stored in
      * ts and pts respectively.
      */
-    if (x1*x1 + y1*y1 <= r2)
+    if (faceint[0]*faceint[0] + faceint[1]*faceint[1] <= r2)
     {
         ts[4*index] = t;
-        if (offset == 0 || offset == 3)
+        if (offset < 2)
         {
-            pts[6*index + offset] = x1;
-            pts[6*index + offset + 1] = y1;
-            pts[6*index + offset + 2] = hh;
-            offset += 3;
+            pts[2*index + offset] = faceint;
+            offset++;
         }
     }
     // Otherwise, the time is stored as -1.
@@ -276,18 +193,15 @@ __device__ void intersectCylinderTopBottom(float *ts, float *pts,
         ts[4*index] = -1;
     }
     // Repeat the above step for the bottom face of the Cylinder.
-    t = (-hh-z)/vz;
-    x1 = x + vx*t;
-    y1 = y + vy*t;
-    if (x1*x1 + y1*y1 <= r2)
+    t = (-hh-orig[2])/vel[2];
+    faceint = orig + (vel * t);
+    if (faceint[0]*faceint[0] + faceint[1]*faceint[1] <= r2)
     {
         ts[4*index + 1] = t;
-        if (offset == 0 || offset == 3)
+        if (offset < 2)
         {
-            pts[6*index + offset] = x1;
-            pts[6*index + offset + 1] = y1;
-            pts[6*index + offset + 2] = -hh;
-            offset += 3;
+            pts[2*index + offset] = faceint;
+            offset++;
         }
     }
     else
@@ -296,132 +210,100 @@ __device__ void intersectCylinderTopBottom(float *ts, float *pts,
     }
 }
 
-/* This function is not yet working.
- * As a result, it will not yet be commented.
+/* This function calculates the intersection point and time
+ * for a neutron and a triangle (in three dimensions).
+ * It is an implementation of the Moller-Trumbore Ray-Triangle
+ * Intersection algorithm.
+ * Note that this algorithm is not the same as the one used
+ * currently in McVine.
  */
-__device__ void intersectTriangle(float *ts, float *pts,
-                                  const float x, const float y, const float z,
-                                  const float vx, const float vy, const float vz,
-                                  const float aX, const float aY, const float aZ, 
-                                  const float bX, const float bY, const float bZ,
-                                  const float cX, const float cY, const float cZ,
+__device__ void intersectTriangle(float *ts, Vec3<float> *pts,
+                                  const Vec3<float> &orig,
+                                  const Vec3<float> &vel,
+                                  const Vec3<float> &a,
+                                  const Vec3<float> &b,
+                                  const Vec3<float> &c,
                                   const int off1, int &off2)
 {   
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    float abX = bX - aX, abY = bY - aY, abZ = bZ - aZ;
-    float acX = cX - aX, acY = cY - aY, acZ = cZ - aZ;
-    float nX, nY, nZ;
-    cross(abX, abY, abZ, acX, acY, acZ, &nX, &nY, &nZ);
-    float nLength = fabsf(nX)*fabsf(nX)+fabsf(nY)*fabsf(nY)+fabsf(nZ)*fabsf(nZ);
-    nLength = sqrtf(nLength);
-    nX /= nLength; nY /= nLength; nZ /= nLength;
-    float ndv = dot(nX, nY, nZ, vx, vy, vz);
-    if (fabsf(ndv) < 1e-10)
+    const float EPSILON = 1e-7;
+    /* edge1 is the vector corresponding to the edge of the
+     *     triangle between vertices a and b.
+     * edge2 is the vector corresponding to the edge of the
+     *     triangle between vertices a and c.
+     * p is the cross product of neutron velocity and edge2.
+     * s is the vector connecting the neutron's initial position
+     *     (orig) and vertex a.
+     * q is the cross product between s and edge1. 
+     */
+    Vec3<float> edge1, edge2, p, s, q;
+    /* denom is the dot product of edge1 and p. It is used to determine
+     *     if the neutron's ray is parallel to the triangle.
+     * frac is the fraction used in the calculation of t, u, and v.
+     * u and v are the Barycentric Coordinates used to represent the
+     *     intersection point in the Moller-Trumbore algorithm.
+     */
+    float denom, frac, u, v;
+    edge1 = b - a;
+    edge2 = c - a;
+    p = vel * edge2;
+    denom = edge1 | p;
+    /* If denom is close to zero, the ray representing the neutron
+     * is parallel to the triangle. As a result, the time is set to a
+     * default no-intersection value of -1, and the function ends.
+     */
+    if (fabsf(denom) < EPSILON)
     {
         ts[5*index + off1] = -1;
         return;
     }
-    float d = dot(nX, nY, nZ, aX, aY, aZ);
-    float t = (dot(nX, nY, nZ, x, y, z) + d) / ndv;
-    if (t < 0)
+    frac = 1/denom;
+    s = orig - a;
+    /* The Moller-Trumbore algorithm says that t, u, and v are calculated
+     * by the following equations:
+     *     u = 1/(dot(p, edge1)) * (dot(p, s))
+     *     v = 1/(dot(p, edge1)) * (dot(q, vel))
+     *     t = 1/(dot(p, edge1)) * (dot(q, edge2))
+     * The code below calculates these values using these equations.
+     */
+    u = frac * (s | p);
+    /* Barycentric coordinates must be between 0 and 1 for a point to lie
+     * within the triangle. Therefore, if u is not in this range,
+     * there is no intersection.
+     */
+    if (u < 0 || u > 1)
     {
-        printf("time < 0\n");
         ts[5*index + off1] = -1;
         return;
     }
-    float pX = x + vx*t, pY = y + vy*t, pZ = z + vz*t;
-    float apX = pX - aX, apY = pY - aY, apZ = pZ - aZ;
-    float edge1X = cX - bX, edge1Y = cY - bY, edge1Z = cZ - bZ;
-    float bpX = pX - bX, bpY = pY - bY, bpZ = pZ - bZ;
-    float cpX = pX - cX, cpY = pY - cY, cpZ = pZ - cZ;
-    float c0X, c0Y, c0Z, c1X, c1Y, c1Z, c2X, c2Y, c2Z;
-    cross(abX, abY, abZ, apX, apY, apZ, &c0X, &c0Y, &c0Z);
-    cross(edge1X, edge1Y, edge1Z, bpX, bpY, bpZ, &c1X, &c1Y, &c1Z);
-    cross(-acX, -acY, -acZ, cpX, cpY, cpZ, &c2X, &c2Y, &c2Z);
-    if (dot(nX, nY, nZ, c0X, c0Y, c0Z) < 0 ||
-        dot(nX, nY, nZ, c1X, c1Y, c1Z) < 0 ||
-        dot(nX, nY, nZ, c2X, c2Y, c2Z) < 0)
+    q = s * edge1;
+    v = frac * (vel | q);
+    /* The same point about the range of u applies to v.
+     * Additionally, the point is within the triangle if and only if
+     * u + v <= 1.
+     * If either of these conditions are not met, there is no intersection.
+     */
+    if (v < 0 || u+v > 1)
     {
-        ts[5*index+off1] = -1;
+        ts[5*index + off1] = -1;
         return;
     }
+    float t = frac * (edge2 | q);
+    /*if (t < EPSILON)
+    {
+        ts[5*index + off1] = -1;
+        return;
+    }*/
+    /* If the code gets to this point, there is a valid intersection,
+     * and the intersection data is stored.
+     */
     ts[5*index + off1] = t;
-    if (off2 == 0 || off2 == 3)
+    if (off2 < 2)
     {
-        pts[6*index + off2] = pX;
-        pts[6*index + off2 + 1] = pY;
-        pts[6*index + off2 + 2] = pZ;
-        off2 += 3;
+        pts[2*index + off2] = orig + vel*t;
+        off2++;
     }
-    //__syncthreads();
-    return;
-    /*int index = blockIdx.x * blockDim.x + threadIdx.x;
-    float abX = bX - aX, abY = bY - aY, abZ = bZ - aZ;
-    float acX = cX - aX, acY = cY - aY, acZ = cZ - aZ;
-    float nX, nY, nZ;
-    cross(abX, abY, abZ, acX, acY, acZ, &nX, &nY, &nZ);
-    float nLength = fabsf(nX)*fabsf(nX)+fabsf(nY)*fabsf(nY)+fabsf(nZ)*fabsf(nZ);
-    nLength = sqrtf(nLength);
-    nX /= nLength; nY /= nLength; nZ /= nLength;
-    float d = dot(nX, nY, nZ, aX, aY, aZ);
-    float v_p = dot(nX, nY, nZ, vx, vy, vz);
-    if (fabsf(v_p) < 1e-10)
-    {
-        ts[5*index + off1] = -1;
-        return;
-    }
-    float r_p = dot(nX, nY, nZ, x, y, z);
-    float t = (d - r_p)/v_p;
-    //printf("index = %i\n    abX = %f abY = %f abZ = %f\n    acX = %f acY = %f acZ = %f\n    nX = %f nY = %f nZ = %f\n    d = %f r_p = %f v_p = %f\n    t = %f\n", index, abX, abY, abZ, acX, acY, acZ, nX, nY, nZ, d, r_p, v_p, t);
-    float pX = x + vx*t, pY = y + vy*t, pZ = z + vz*t;
-    float apX = pX - aX, apY = pY - aY, apZ = pZ - aZ;
-    float ncX, ncY, ncZ;
-    cross(nX, nY, nZ, acX, acY, acZ, &ncX, &ncY, &ncZ);
-    float c1 = dot(apX, apY, apZ, ncX, ncY, ncZ)/dot(abX, abY, abZ, ncX, ncY, ncZ);
-    if (c1 < 0)
-    {
-        ts[5*index + off1] = -1;
-        return;
-    }
-    float nbX, nbY, nbZ;
-    cross(nX, nY, nZ, abX, abY, abZ, &nbX, &nbY, &nbZ);
-    float c2 = dot(apX, apY, apZ, nbX, nbY, nbZ)/dot(acX, acY, acZ, nbX, nbY, nbZ);
-    if (c2 < 0)
-    {
-        ts[5*index + off1] = -1;
-        return;
-    }
-    if (c1+c2 > 1)
-    {
-        ts[5*index + off1] = -1;
-        return;
-    }
-    // Set time to actual value and record pX, pY, and pZ as int pts.
-    // ascii(T) = 84
-    ts[5*index + off1] = t + 84;
-    if (off2 == 0 || off2 == 3)
-    {
-        pts[6*index + off2] = pX;
-        pts[6*index + off2 + 1] = pY;
-        pts[6*index + off2 + 2] = pZ;
-        //printf("index = %i: time = %f\n    x = %f y = %f z = %f\n    vx = %f vy = %f vz = %f\n    pX = %f pY = %f pZ = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n", index, t, x, y, z, vx, vy, vz, pX, pY, pZ, 6*index+off2, pts[6*index + off2], 6*index+off2+1, pts[6*index + off2+1], 6*index+off2+2, pts[6*index + off2+2]);
-        off2 += 3;
-        //printf("Triangle: index = %i    off2 = %i\n", index, off2);
-    }
-    __syncthreads();*/
 }
-
-/*__device__ void calculateQuadCoef(float x, float vx, float vy, float vz,
-                                  float dist, float &disc,
-                                  float &a, float &b, float &c)
-{
-    a = 1 + (vy/vx)*(vy/vx) + (vz/vx)*(vz/vx);
-    b = -2*(1 + ((x*vy*vy)/(vx*vx)) + ((x*vz*vz)/(vx*vx)));
-    c = x*x + ((x*vy)/vx)*((x*vy)/vx) + ((x*vz)/vx)*((x*vz)/vx);
-    c -= dist*dist;
-    disc = b*b - 4*a*c;
-    return;
-}*/
 
 __device__ bool solveQuadratic(float a, float b, float c, float &x0, float &x1)
 {
@@ -458,10 +340,10 @@ __device__ bool solveQuadratic(float a, float b, float c, float &x0, float &x1)
     return true;
 }
 
-__global__ void intersectBox(float* rx, float* ry, float* rz,
-                             float* vx, float* vy, float* vz,
+__global__ void intersectBox(Vec3<float>* origins,
+                             Vec3<float>* vel,
                              const float X, const float Y, const float Z, 
-                             const int N, float* ts, float* pts)
+                             const int N, float* ts, Vec3<float>* pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     // This is done to prevent excess threads from interfering in the code.
@@ -477,10 +359,10 @@ __global__ void intersectBox(float* rx, float* ry, float* rz,
          * Otherwise, the intersectRectangle function is used to
          * calculate any potential intersection times and points.
          */
-        if (vz[index] != 0)
+        if (vel[index][2] != 0)
         {
-            intersectRectangle(ts, pts, rx[index], ry[index], rz[index], Z/2, vx[index], vy[index], vz[index], X, Y, 0, 6, 0, offset);
-            intersectRectangle(ts, pts, rx[index], ry[index], rz[index], -Z/2, vx[index], vy[index], vz[index], X, Y, 0, 6, 1, offset);
+            intersectRectangle(ts, pts, origins[index], Z/2, vel[index], X, Y, 0, 6, 0, offset);
+            intersectRectangle(ts, pts, origins[index], -Z/2, vel[index], X, Y, 0, 6, 1, offset);
         }
         else
         {
@@ -493,10 +375,10 @@ __global__ void intersectBox(float* rx, float* ry, float* rz,
          * Otherwise, the intersectRectangle function is used to
          * calculate any potential intersection times and points.
          */
-        if (vx[index] != 0)
+        if (vel[index][0] != 0)
         {
-            intersectRectangle(ts, pts, ry[index], rz[index], rx[index], X/2, vy[index], vz[index], vx[index], Y, Z, 1, 6, 2, offset);
-            intersectRectangle(ts, pts, ry[index], rz[index], rx[index], -X/2, vy[index], vz[index], vx[index], Y, Z, 1, 6, 3, offset);
+            intersectRectangle(ts, pts, origins[index], X/2, vel[index], Y, Z, 2, 6, 2, offset);
+            intersectRectangle(ts, pts, origins[index], -X/2, vel[index], Y, Z, 2, 6, 3, offset);
         }
         else
         {
@@ -509,10 +391,10 @@ __global__ void intersectBox(float* rx, float* ry, float* rz,
          * Otherwise, the intersectRectangle function is used to
          * calculate any potential intersection times and points.
          */
-        if (vy[index] != 0)
+        if (vel[index][1] != 0)
         {
-            intersectRectangle(ts, pts, rz[index], rx[index], ry[index], Y/2, vz[index], vx[index], vy[index], Z, X, 2, 6, 4, offset);
-            intersectRectangle(ts, pts, rz[index], rx[index], ry[index], -Y/2, vz[index], vx[index], vy[index], Z, X, 2, 6, 5, offset);
+            intersectRectangle(ts, pts, origins[index], Y/2, vel[index], Z, X, 1, 6, 4, offset);
+            intersectRectangle(ts, pts, origins[index], -Y/2, vel[index], Z, X, 1, 6, 5, offset);
         }
         else
         {
@@ -522,10 +404,9 @@ __global__ void intersectBox(float* rx, float* ry, float* rz,
     }
 }
 
-__global__ void intersectCylinder(float *rx, float *ry, float *rz,
-                                  float *vx, float *vy, float *vz,
+__global__ void intersectCylinder(Vec3<float> *origins, Vec3<float> *vel,
                                   const float r, const float h,
-                                  const int N, float *ts, float *pts)
+                                  const int N, float *ts, Vec3<float> *pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     // This is done to prevent excess threads from interfering in the code.
@@ -538,15 +419,14 @@ __global__ void intersectCylinder(float *rx, float *ry, float *rz,
         /* The actual intersection calculations are carried out
          * by these two helper functions.
          */
-        intersectCylinderTopBottom(ts, pts, rx[index], ry[index], rz[index], vx[index], vy[index], vz[index], r, h, offset);
-        intersectCylinderSide(ts, pts, rx[index], ry[index], rz[index], vx[index], vy[index], vz[index], r, h, offset);
+        intersectCylinderTopBottom(ts, pts, origins[index], vel[index], r, h, offset);
+        intersectCylinderSide(ts, pts, origins[index], vel[index], r, h, offset);
     }
 }
 
-__global__ void intersectPyramid(float *rx, float *ry, float *rz,
-                                 float *vx, float *vy, float *vz,
+__global__ void intersectPyramid(Vec3<float> *origins, Vec3<float> *vel,
                                  const float X, const float Y, const float H,
-                                 const int N, float *ts, float *pts)
+                                 const int N, float *ts, Vec3<float> *pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     // This is done to prevent excess threads from interfering in the code.
@@ -561,43 +441,49 @@ __global__ void intersectPyramid(float *rx, float *ry, float *rz,
          * the intersectRectangle function is used to determine any
          * intersection point.
          */
-        if (vz[index] != 0)
+        if (vel[index][2] != 0)
         {
-            intersectRectangle(ts, pts, rx[index], ry[index], rz[index], -H, vx[index], vy[index], vz[index], X, Y, 0, 5, 0, offset);
+            intersectRectangle(ts, pts, origins[index], -H, vel[index], X, Y, 0, 5, 0, offset);
         }
         /* These calls to intersectTriangle determine if there are
          * any intersections between the neutron and the triangular
          * faces of the Pyramid.
          */
         intersectTriangle(ts, pts,
-                          rx[index], ry[index], rz[index],
-                          vz[index], vy[index], vz[index],
-                          0, 0, 0, X/2, Y/2, -H, X/2, -Y/2, -H,
+                          origins[index],
+                          vel[index],
+                          Vec3<float>(0, 0, 0),
+                          Vec3<float>(X/2, Y/2, -H),
+                          Vec3<float>(X/2, -Y/2, -H),
                           1, offset);
         intersectTriangle(ts, pts,
-                          rx[index], ry[index], rz[index],
-                          vz[index], vy[index], vz[index],
-                          0, 0, 0, X/2, -Y/2, -H, -X/2, -Y/2, -H,
+                          origins[index],
+                          vel[index],
+                          Vec3<float>(0, 0, 0),
+                          Vec3<float>(X/2, -Y/2, -H),
+                          Vec3<float>(-X/2, -Y/2, -H),
                           2, offset);
         intersectTriangle(ts, pts,
-                          rx[index], ry[index], rz[index],
-                          vz[index], vy[index], vz[index],
-                          0, 0, 0, -X/2, -Y/2, -H, -X/2, Y/2, -H,
+                          origins[index],
+                          vel[index],
+                          Vec3<float>(0, 0, 0),
+                          Vec3<float>(-X/2, -Y/2, -H),
+                          Vec3<float>(-X/2, Y/2, -H),
                           3, offset);
         intersectTriangle(ts, pts,
-                          rx[index], ry[index], rz[index],
-                          vz[index], vy[index], vz[index],
-                          0, 0, 0, -X/2, Y/2, -H, X/2, Y/2, -H,
+                          origins[index],
+                          vel[index],
+                          Vec3<float>(0, 0, 0),
+                          Vec3<float>(-X/2, Y/2, -H),
+                          Vec3<float>(X/2, Y/2, -H),
                           4, offset);
         __syncthreads();
-        //printf("index = %i:\n    ts[%i] = %f ts[%i] = %f ts[%i] = %f ts[%i] = %f ts[%i] = %f\n    rx[%i] = %f ry[%i] = %f rz[%i] = %f\n    vx[%i] = %f vy[%i] = %f vz[%i] = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n    pts[%i] = %f pts[%i] = %f pts[%i] = %f\n", index, 5*index, ts[5*index], 5*index+1, ts[5*index+1], 5*index+2, ts[5*index+2], 5*index+3, ts[5*index+3], 5*index+4, ts[5*index+4], index, rx[index], index, ry[index], index, rz[index], index, vx[index], index, vy[index], index, vz[index], 6*index, pts[6*index], 6*index+1, pts[6*index+1], 6*index+2, pts[6*index+2], 6*index+3, pts[6*index+3], 6*index+4, pts[6*index+4], 6*index+5, pts[6*index+5]);
     }
 }
 
-__global__ void intersectSphere(float *rx, float *ry, float *rz,
-                                float *vx, float *vy, float *vz,
+__global__ void intersectSphere(Vec3<float> *origins, Vec3<float> *vel,
                                 const float radius,
-                                const int N, float *ts, float *pts)
+                                const int N, float *ts, Vec3<float> *pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     // This is done to prevent excess threads from interfering in the code.
@@ -610,12 +496,9 @@ __global__ void intersectSphere(float *rx, float *ry, float *rz,
          * (<x,y,z> = <x0,y0,z0>+t*<vx,vy,vz>) into the equation of
          * a Sphere.
          */
-        float a = dot(vx[index], vy[index], vz[index],
-                      vx[index], vy[index], vz[index]);
-        float b = 2 * dot(rx[index], ry[index], rz[index],
-                          vx[index], vy[index], vz[index]);
-        float c = dot(rx[index], ry[index], rz[index],
-                      rx[index], ry[index], rz[index]);
+        float a = (vel[index] | vel[index]);
+        float b = 2*(origins[index] | vel[index]);
+        float c = (origins[index] | origins[index]);
         c -= radius*radius;
         /* The solveQuadratic function is used to calculate the
          * two potential intersection times. If the function
@@ -642,9 +525,7 @@ __global__ void intersectSphere(float *rx, float *ry, float *rz,
             else
             {
                 ts[2*index] = t0;
-                pts[6*index] = rx[index] + vx[index] * t0;
-                pts[6*index+1] = ry[index] + vy[index] * t0;
-                pts[6*index+2] = rz[index] + vz[index] * t0;
+                pts[2*index] = origins[index] + (vel[index] * t0);
             }
             if (t1 < 0)
             {
@@ -653,9 +534,7 @@ __global__ void intersectSphere(float *rx, float *ry, float *rz,
             else
             {
                 ts[2*index + 1] = t1;
-                pts[6*index+3] = rx[index] + vx[index] * t1;
-                pts[6*index+4] = ry[index] + vy[index] * t1;
-                pts[6*index+5] = rz[index] + vz[index] * t1;
+                pts[2*index + 1] = origins[index] + (vel[index] * t1);
             }
         }
         __syncthreads();
@@ -686,28 +565,28 @@ __global__ void prepRand(curandState *state, int seed)
     curand_init(((seed << 10) + idx), 0, 0, &state[idx]); 
 }
 
-__device__ void randCoord(float* inters, float* time , float *sx, float *sy, float *sz, curandState *state)
+__device__ void randCoord(Vec3<float> *inters, float *time,
+                          Vec3<float> &pos,
+                          curandState *state)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     /* Instead of pasing the initial ray data, the two intersection
      * points and times are used to recalculate the velocities.
      */
     float dt = time[1] - time[0];
-    float mx = (inters[3] - inters[0])/dt;
-    float my = (inters[4] - inters[1])/dt;
-    float mz = (inters[5] - inters[2])/dt;
+    Vec3<float> m = (inters[1] - inters[0]) * (1.0/dt);
     // cuRand is used to generate a random time between 0 and dt.
     float randt = curand_uniform(&(state[index]));
     randt *= dt;
     /* Basic kinematics are used to calculate the coordinates of
      * the randomly chosen scattering site.
      */
-    *sx = inters[0] + mx*randt;
-    *sy = inters[1] + my*randt;
-    *sz = inters[2] + mz*randt;
+    pos = inters[0] + (m*randt);
 }
 
-__global__ void calcScatteringSites(float* ts, float* int_pts, float* pos, curandState *state, const int N)
+__global__ void calcScatteringSites(float *ts, Vec3<float> *int_pts,
+                                    Vec3<float> *pos, curandState *state,
+                                    const int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     // This is done to prevent excess threads from interfering in the code.
@@ -726,21 +605,19 @@ __global__ void calcScatteringSites(float* ts, float* int_pts, float* pos, curan
              */
             if (ts[2*index] > ts[2*index+1])
             {
-                float tmpt, tmpc;
+                float tmpt;
+                Vec3<float> tmpv;
                 tmpt = ts[2*index];
                 ts[2*index] = ts[2*index+1];
                 ts[2*index+1] = tmpt;
-                for (int i = 6*index; i < 6*index+3; i++)
-                {
-                    tmpc = int_pts[i];
-                    int_pts[i] = int_pts[i + 3];
-                    int_pts[i + 3] = tmpc;
-                }
+                tmpv = int_pts[2*index];
+                int_pts[2*index] = int_pts[2*index+1];
+                int_pts[2*index+1] = tmpv;
             }
             /* The randCoord function is called to determine the
              * scattering site.
              */
-            randCoord(&(int_pts[6*index]), &(ts[2*index]), &(pos[3*index + 0]), &(pos[3*index + 1]), &(pos[3*index + 2]), state);
+            randCoord(&(int_pts[2*index]), &(ts[2*index]), pos[index], state);
         }
     }
 }
