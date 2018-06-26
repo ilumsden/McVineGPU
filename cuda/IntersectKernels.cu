@@ -1,6 +1,4 @@
-#include <cstdio>
-
-#include "Kernels.hpp"
+#include "IntersectKernels.hpp"
 
 __device__ void intersectRectangle(float* ts, Vec3<float>* pts,
                                    const Vec3<float> &orig, float zdiff,
@@ -305,41 +303,6 @@ __device__ void intersectTriangle(float *ts, Vec3<float> *pts,
     }
 }
 
-__device__ bool solveQuadratic(float a, float b, float c, float &x0, float &x1)
-{
-    // Calculates the discriminant and returns false if it is less than 0.
-    float discr = b*b - 4*a*c;
-    if (discr < 0)
-    {
-        return false;
-    }
-    else
-    {
-        /* This process ensures that there is little to no roundoff error
-         * in the evaluation of the quadratic formula.
-         * This process defines a value 
-         * q = -0.5 * (b + sign(b)*sqrt(b^2 - 4ac)).
-         * If you define x0 = q/a (producing the standard quadratic
-         * formula), x1 can be defined as c/q by multiplying the
-         * other form of the formula (+/- -> -sign(b)) by
-         * ((-b + sign(b)*sqrt(discr))/(-b + sign(b)*sqrt(discr))).
-         */
-        float q = (b > 0) ? 
-                  (-0.5 * (b + sqrtf(discr))) :
-                  (-0.5 * (b - sqrtf(discr)));
-        x0 = q/a;
-        x1 = c/q;
-    }
-    // This simply ensures that x0 < x1.
-    if (x0 > x1)
-    {
-        float tmp = x0;
-        x0 = x1;
-        x1 = tmp;
-    }
-    return true;
-}
-
 __global__ void intersectBox(Vec3<float>* origins,
                              Vec3<float>* vel,
                              const float X, const float Y, const float Z, 
@@ -538,86 +501,5 @@ __global__ void intersectSphere(Vec3<float> *origins, Vec3<float> *vel,
             }
         }
         __syncthreads();
-    }
-}
-
-__global__ void simplifyTimes(const float *times, const int N, const int groupSize, float *simp)
-{
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    // This is done to prevent excess threads from interfering in the code.
-    if (index < N)
-    {
-        int count = 0;
-        for (int i = 0; i < groupSize; i++)
-        {
-            if (times[groupSize * index + i] != -1 && count < 2)
-            {
-                simp[2*index+count] = times[groupSize*index+i];
-                count++;
-            }
-        }
-    }
-}
-
-__global__ void prepRand(curandState *state, int seed)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    curand_init(((seed << 10) + idx), 0, 0, &state[idx]); 
-}
-
-__device__ void randCoord(Vec3<float> *inters, float *time,
-                          Vec3<float> &pos,
-                          curandState *state)
-{
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    /* Instead of pasing the initial ray data, the two intersection
-     * points and times are used to recalculate the velocities.
-     */
-    float dt = time[1] - time[0];
-    Vec3<float> m = (inters[1] - inters[0]) * (1.0/dt);
-    // cuRand is used to generate a random time between 0 and dt.
-    float randt = curand_uniform(&(state[index]));
-    randt *= dt;
-    /* Basic kinematics are used to calculate the coordinates of
-     * the randomly chosen scattering site.
-     */
-    pos = inters[0] + (m*randt);
-}
-
-__global__ void calcScatteringSites(float *ts, Vec3<float> *int_pts,
-                                    Vec3<float> *pos, curandState *state,
-                                    const int N)
-{
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    // This is done to prevent excess threads from interfering in the code.
-    if (index < N)
-    {
-        /* If the intersection times for the neutron are the default
-         * value of -5, there was no intersection, so the function
-         * terminates.
-         */
-        if (ts[2*index] != -5 && ts[2*index+1] != -5)
-        {
-            /* The randCoord function assumes that the first time
-             * is smaller than the second. If this is not the
-             * case, the times and the corresponding intersection
-             * coordinates are swapped.
-             */
-            if (ts[2*index] > ts[2*index+1])
-            {
-                float tmpt;
-                Vec3<float> tmpv;
-                tmpt = ts[2*index];
-                ts[2*index] = ts[2*index+1];
-                ts[2*index+1] = tmpt;
-                tmpv = int_pts[2*index];
-                int_pts[2*index] = int_pts[2*index+1];
-                int_pts[2*index+1] = tmpv;
-            }
-            /* The randCoord function is called to determine the
-             * scattering site.
-             */
-            randCoord(&(int_pts[2*index]), &(ts[2*index]), pos[index], state);
-        }
     }
 }

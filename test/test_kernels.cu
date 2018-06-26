@@ -1,5 +1,6 @@
 #include "test_kernels.hpp"
-#include "Kernels.hpp"
+//#include "Kernels.hpp"
+#include "IntersectKernels.hpp"
 
 __host__ __device__ bool assert_almosteq(float a, float b)
 {

@@ -4,7 +4,8 @@
 #include <vector>
 
 #include "Error.hpp"
-#include "Kernels.hpp"
+//#include "Kernels.hpp"
+#include "UtilKernels.hpp"
 
 #include "tests.hpp"
 #include "test_kernels.hpp"

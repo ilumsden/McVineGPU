@@ -2,7 +2,6 @@
 
 #include "Box.hpp"
 #include "Error.hpp"
-#include "Kernels.hpp"
 
 void Box::intersect(Vec3<float> *d_origins,
                     Vec3<float> *d_vel,

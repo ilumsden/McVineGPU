@@ -4,7 +4,6 @@
 #include <cfloat>
 
 #include "AbstractShape.hpp"
-#include "Kernels.hpp"
 
 /* The struct defining the Cylinder primitive.
  * It inherits from AbstractShape to ensure it contains the

@@ -3,7 +3,6 @@
 #include <chrono>
 
 #include "Error.hpp"
-#include "Kernels.hpp"
 #include "Sphere.hpp"
 
 void Sphere::intersect(Vec3<float> *d_origins, Vec3<float> *d_vel,

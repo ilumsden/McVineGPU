@@ -2,7 +2,6 @@
 
 #include "Error.hpp"
 #include "Pyramid.hpp"
-#include "Kernels.hpp"
 
 void Pyramid::intersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
                         const int N, const int blockSize, const int numBlocks,

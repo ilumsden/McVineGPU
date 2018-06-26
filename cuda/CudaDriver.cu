@@ -10,7 +10,7 @@
 #include <chrono>
 
 #include "CudaDriver.hpp"
-#include "Kernels.hpp"
+#include "ScatteringKernels.hpp"
 #include "Error.hpp"
 
 CudaDriver::CudaDriver(const std::vector< std::shared_ptr<Ray> > &rays, int bS)
@@ -60,7 +60,7 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b,
     b->intersect(d_origins, d_vel, N, blockSize, numBlocks, host_time, int_coords);
     // Opens a file stream and prints the relevant data to time.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
-    /*std::fstream fout;
+    std::fstream fout;
     fout.open("time.txt", std::ios::out);
     if (!fout.is_open())
     {
@@ -96,7 +96,7 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b,
         }
     }
     // Closes the file stream
-    fout.close();*/
+    fout.close();
     return;
 }
 
@@ -196,11 +196,11 @@ void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
     double time = std::chrono::duration<double>(stop - start).count();
     printf("handleRectIntersect: %f\n", time);
     // Creates the vector that will store the scattering coordinates
-    std::vector< Vec3<float> > scattering_sites;
+    /*std::vector< Vec3<float> > scattering_sites;
     // Starts the scattering site calculation
     start = std::chrono::steady_clock::now();
     findScatteringSites(int_times, int_coords, scattering_sites);
     stop = std::chrono::steady_clock::now();
     time = std::chrono::duration<double>(stop - start).count();
-    printf("findScatteringSites: %f\n", time);
+    printf("findScatteringSites: %f\n", time);*/
 }

@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "IntersectKernels.hpp"
 #include "Ray.hpp"
 
 /* Abstract Shape is the parent interface for the primitive
