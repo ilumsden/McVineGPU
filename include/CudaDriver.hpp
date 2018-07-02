@@ -46,7 +46,6 @@ class CudaDriver
 
         // This function is used to initiate the scattering site calculation.
         void findScatteringSites(const std::vector<float> &int_times, 
-                                 const std::vector< Vec3<float> > &int_coords,
                                  std::vector< Vec3<float> > &sites);
 
         void findScatteringVels(const std::vector<float> &int_times,

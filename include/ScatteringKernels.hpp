@@ -9,7 +9,8 @@
  * thread that this function is called from.
  * This function can be called on device only.
  */
-__device__ void randCoord(Vec3<float> *inters, float *time,
+__device__ void randCoord(Vec3<float> &orig, Vec3<float> &vel,
+                          float *time,
                           Vec3<float> &pos,
                           curandState *state);
 
@@ -22,7 +23,8 @@ __device__ void randCoord(Vec3<float> *inters, float *time,
  * scattering points.
  * This function can be called from host.
  */
-__global__ void calcScatteringSites(float *ts, Vec3<float> *int_pts,
+__global__ void calcScatteringSites(float *ts, 
+                                    Vec3<float> *orig, Vec3<float> *vel,
                                     Vec3<float> *pos, curandState *state,
                                     const int N);
 

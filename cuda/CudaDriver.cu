@@ -101,21 +101,16 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b,
 }
 
 void CudaDriver::findScatteringSites(const std::vector<float> &int_times, 
-                                     const std::vector< Vec3<float> > &int_coords,
                                      std::vector< Vec3<float> > &sites)
 {
     // Stores the sizes of the `int_times` and `int_coords` vectors for later
     int tsize = (int)(int_times.size());
-    int csize = (int)(int_coords.size());
     /* Allocates memory for two device-side arrays that store the
      * data passed in from `int_times` and `int_coords`.
      */
     float *ts;
-    Vec3<float> *inters;
     CudaErrchk( cudaMalloc(&ts, 2*N*sizeof(float)) );
-    CudaErrchk( cudaMalloc(&inters, 2*N*sizeof(Vec3<float>)) );
     CudaErrchk( cudaMemcpy(ts, int_times.data(), 2*N*sizeof(float), cudaMemcpyHostToDevice) );
-    CudaErrchk( cudaMemcpy(inters, int_coords.data(), 2*N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
     /* `pos` is a device-side array that stores the coordinates of the
      * scattering sites for the neutrons.
      * The default value of its data is FLT_MAX.
@@ -143,7 +138,8 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     double time = std::chrono::duration<double>(stop - start).count();
     printf("Rand Prep Complete\n    Summary: Time = %f\n", time);
     // Calls the kernel for determining the scattering sites for the neutrons
-    calcScatteringSites<<<numBlocks, blockSize>>>(ts, inters, pos, state, N);
+    //calcScatteringSites<<<numBlocks, blockSize>>>(ts, inters, pos, state, N);
+    calcScatteringSites<<<numBlocks, blockSize>>>(ts, d_origins, d_vel, pos, state, N);
     CudaErrchkNoCode();
     // Copies the post-kernel contents of `pos` into `sites`.
     Vec3<float>* s = sites.data();
@@ -151,7 +147,7 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     // Opens a file stream and prints the 
     // relevant data to scatteringSites.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
-    /*std::fstream fout;
+    std::fstream fout;
     fout.open("scatteringSites.txt", std::ios::out);
     if (!fout.is_open())
     {
@@ -173,12 +169,12 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
             fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << "    " << buf << " " << buf << " | "
 << std::fixed << std::setprecision(5) << std::setw(8) << std::right << sites[i][2] << "\n";
     }
-    fout.close();*/
+    fout.close();
     // Frees the device memory allocated above.
-    cudaFree(ts);
-    cudaFree(inters);
-    cudaFree(pos);
-    cudaFree(state);
+    CudaErrchk( cudaFree(ts) );
+    //cudaFree(inters);
+    CudaErrchk( cudaFree(pos) );
+    CudaErrchk( cudaFree(state) );
     return;
 }
 
@@ -255,14 +251,14 @@ void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
     std::vector< Vec3<float> > scattering_sites;
     // Starts the scattering site calculation
     start = std::chrono::steady_clock::now();
-    findScatteringSites(int_times, int_coords, scattering_sites);
+    findScatteringSites(int_times, scattering_sites);
     stop = std::chrono::steady_clock::now();
     time = std::chrono::duration<double>(stop - start).count();
     printf("findScatteringSites: %f\n", time);
-    std::vector< Vec3<float> > scattering_vels;
+    /*std::vector< Vec3<float> > scattering_vels;
     start = std::chrono::steady_clock::now();
     findScatteringVels(int_times, scattering_vels);
     stop = std::chrono::steady_clock::now();
     time = std::chrono::duration<double>(stop - start).count();
-    printf("findScatteringTimes: %f\n", time);
+    printf("findScatteringTimes: %f\n", time);*/
 }
