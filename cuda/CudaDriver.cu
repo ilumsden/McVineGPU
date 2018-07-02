@@ -194,7 +194,7 @@ void CudaDriver::findScatteringVels(const std::vector<float> &int_times,
     scattering_vels.resize(N);
     CudaErrchkNoCode();
     curandState *state;
-    CudaErrchk( cudaMalloc(&state, 2*numBlocks*blockSize*sizeof(curandState)) );
+    CudaErrchk( cudaMalloc(&state, numBlocks*blockSize*sizeof(curandState)) );
     auto start = std::chrono::steady_clock::now();
     prepRand<<<numBlocks, blockSize>>>(state, time(NULL));
     CudaErrchkNoCode();

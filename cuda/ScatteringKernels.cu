@@ -69,12 +69,12 @@ __global__ void elasticScatteringKernel(const float *int_times,
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N && (int_times[2*index] > 0 && int_times[2*index+1] > 0))
     {
-        float z = curand_uniform(&(state[2*index]));
+        float z = curand_uniform(&(state[index]));
         z *= 2;
         z -= 1;
-        float phi = curand_uniform(&(state[2*index+1]));
-        phi *= 2*PI;
-        float theta = acosf(z);
+        float theta = curand_uniform(&(state[index]));
+        theta *= 2*PI;
+        float phi = acosf(z);
         float rho = initVel[index].length();        
         postVel[index][0] = rho * sinf(phi) * cosf(theta);
         postVel[index][1] = rho * sinf(phi) * sinf(theta);
