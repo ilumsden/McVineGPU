@@ -57,7 +57,8 @@ __global__ void calcScatteringSites(float *ts, Vec3<float> *int_pts,
     }
 }
 
-__global__ void elasticScatteringKernel(const Vec3<float> *initVel,
+__global__ void elasticScatteringKernel(const float *int_times,
+                                        const Vec3<float> *initVel,
                                         Vec3<float> *postVel,
                                         curandState *state,
                                         const int N)
@@ -66,17 +67,15 @@ __global__ void elasticScatteringKernel(const Vec3<float> *initVel,
      * z and phi values.
      */
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (index < N)
+    if (index < N && (int_times[2*index] > 0 && int_times[2*index+1] > 0))
     {
-        float z = curand_uniform(state[index]);
+        float z = curand_uniform(&(state[2*index]));
         z *= 2;
         z -= 1;
-        float phi = curand_uniform(state[index]);
+        float phi = curand_uniform(&(state[2*index+1]));
         phi *= 2*PI;
         float theta = acosf(z);
-        float rho = sqrtf(initVel[0]*initVel[0] +
-                          initVel[1]*initVel[1] +
-                          initVel[2]*initVel[2]);
+        float rho = initVel[index].length();        
         postVel[index][0] = rho * sinf(phi) * cosf(theta);
         postVel[index][1] = rho * sinf(phi) * sinf(theta);
         postVel[index][2] = rho * z;

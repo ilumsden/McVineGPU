@@ -60,7 +60,7 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b,
     b->intersect(d_origins, d_vel, N, blockSize, numBlocks, host_time, int_coords);
     // Opens a file stream and prints the relevant data to time.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
-    std::fstream fout;
+    /*std::fstream fout;
     fout.open("time.txt", std::ios::out);
     if (!fout.is_open())
     {
@@ -96,7 +96,7 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b,
         }
     }
     // Closes the file stream
-    fout.close();
+    fout.close();*/
     return;
 }
 
@@ -125,7 +125,6 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     initArray< Vec3<float> ><<<numBlocks, blockSize>>>(pos, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
     CudaErrchkNoCode();
     // Resizes `sites` so that it can store the contents of `pos`.
-    //sites.resize(3*N);
     sites.resize(N);
     /* Allocates an array of curandStates on the device to control
      * the random number generation.
@@ -152,7 +151,7 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     // Opens a file stream and prints the 
     // relevant data to scatteringSites.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
-    std::fstream fout;
+    /*std::fstream fout;
     fout.open("scatteringSites.txt", std::ios::out);
     if (!fout.is_open())
     {
@@ -174,13 +173,70 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
             fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << "    " << buf << " " << buf << " | "
 << std::fixed << std::setprecision(5) << std::setw(8) << std::right << sites[i][2] << "\n";
     }
-    fout.close();
+    fout.close();*/
     // Frees the device memory allocated above.
     cudaFree(ts);
     cudaFree(inters);
     cudaFree(pos);
     cudaFree(state);
     return;
+}
+
+void CudaDriver::findScatteringVels(const std::vector<float> &int_times,
+                                    std::vector< Vec3<float> > &scattering_vels)
+{
+    Vec3<float> *d_postVel;
+    CudaErrchk( cudaMalloc(&d_postVel, N*sizeof(Vec3<float>)) );
+    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_postVel, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
+    float *d_times;
+    CudaErrchk( cudaMalloc(&d_times, 2*N*sizeof(float)) );
+    CudaErrchk( cudaMemcpy(d_times, int_times.data(), 2*N*sizeof(float), cudaMemcpyHostToDevice) );
+    scattering_vels.resize(N);
+    CudaErrchkNoCode();
+    curandState *state;
+    CudaErrchk( cudaMalloc(&state, 2*numBlocks*blockSize*sizeof(curandState)) );
+    auto start = std::chrono::steady_clock::now();
+    prepRand<<<numBlocks, blockSize>>>(state, time(NULL));
+    CudaErrchkNoCode();
+    CudaErrchk( cudaDeviceSynchronize() );
+    auto stop = std::chrono::steady_clock::now();
+    double time = std::chrono::duration<double>(stop - start).count();
+    printf("Rand Prep Complete\n    Summary: Time = %f\n", time);
+    elasticScatteringKernel<<<numBlocks, blockSize>>>(d_times,
+                                                      d_vel,
+                                                      d_postVel,
+                                                      state, N);
+    CudaErrchkNoCode();
+    Vec3<float> *sv = scattering_vels.data();
+    CudaErrchk( cudaMemcpy(sv, d_postVel, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+    // Opens a file stream and prints the 
+    // relevant data to scatteringVels.txt
+    // NOTE: this is for debugging purposes only. This will be removed later.
+    std::fstream fout;
+    fout.open("scatteringVels.txt", std::ios::out);
+    if (!fout.is_open())
+    {
+        std::cerr << "scatteringSites.txt could not be opened.\n";
+        exit(-2);
+    }
+    for (int i = 0; i < (int)(scattering_vels.size()); i++)
+    {
+            int ind = 2*i;
+            fout << "\n";
+            fout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+                 << origins[i][0] << " " << origins[i][1] << " " << origins[i][2] << " || "
+                 << vel[i][0] << " " << vel[i][1] << " " << vel[i][2] << " || " << int_times[ind] << " " << int_times[ind+1] << " | "
+                 << scattering_vels[i][0] << "\n";
+            std::string buf = "        ";
+            fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << "    " << buf << " " << buf << " | "
+<< std::fixed << std::setprecision(5) << std::setw(8) << std::right << scattering_vels[i][1] << "\n";
+            fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << "    " << buf << " " << buf << " | "
+<< std::fixed << std::setprecision(5) << std::setw(8) << std::right << scattering_vels[i][2] << "\n";
+    }
+    fout.close();
+    CudaErrchk( cudaFree(d_postVel) );
+    CudaErrchk( cudaFree(d_times) );
+    CudaErrchk( cudaFree(state) );
 }
 
 void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
@@ -196,11 +252,17 @@ void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
     double time = std::chrono::duration<double>(stop - start).count();
     printf("handleRectIntersect: %f\n", time);
     // Creates the vector that will store the scattering coordinates
-    /*std::vector< Vec3<float> > scattering_sites;
+    std::vector< Vec3<float> > scattering_sites;
     // Starts the scattering site calculation
     start = std::chrono::steady_clock::now();
     findScatteringSites(int_times, int_coords, scattering_sites);
     stop = std::chrono::steady_clock::now();
     time = std::chrono::duration<double>(stop - start).count();
-    printf("findScatteringSites: %f\n", time);*/
+    printf("findScatteringSites: %f\n", time);
+    std::vector< Vec3<float> > scattering_vels;
+    start = std::chrono::steady_clock::now();
+    findScatteringVels(int_times, scattering_vels);
+    stop = std::chrono::steady_clock::now();
+    time = std::chrono::duration<double>(stop - start).count();
+    printf("findScatteringTimes: %f\n", time);
 }

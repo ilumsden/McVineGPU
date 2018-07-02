@@ -49,6 +49,9 @@ class CudaDriver
                                  const std::vector< Vec3<float> > &int_coords,
                                  std::vector< Vec3<float> > &sites);
 
+        void findScatteringVels(const std::vector<float> &int_times,
+                                std::vector< Vec3<float> > &scattering_vels);
+
         // These members store the host-side copies of the neutron data.
         Vec3<float> *origins, *vel;
         // These members store the device-side copies of the neutron data.
