@@ -11,6 +11,10 @@
 
 #include "Vec3.hpp"
 
+#ifndef PI
+#define PI 3.14159265358979323846f
+#endif
+
 /* This function initializes the contents of the data array with the
  * value val.
  * This function can be called from host.
