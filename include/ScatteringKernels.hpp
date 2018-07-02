@@ -26,4 +26,9 @@ __global__ void calcScatteringSites(float *ts, Vec3<float> *int_pts,
                                     Vec3<float> *pos, curandState *state,
                                     const int N);
 
+__global__ void elasticScatteringKernel(const Vec3<float> *initVel,
+                                        Vec3<float> *postVel,
+                                        curandState *state,
+                                        const int N);
+
 #endif

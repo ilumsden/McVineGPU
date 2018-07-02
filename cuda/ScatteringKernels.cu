@@ -56,3 +56,29 @@ __global__ void calcScatteringSites(float *ts, Vec3<float> *int_pts,
         }
     }
 }
+
+__global__ void elasticScatteringKernel(const Vec3<float> *initVel,
+                                        Vec3<float> *postVel,
+                                        curandState *state,
+                                        const int N)
+{
+    /* To start each curandState will be used to generate the random
+     * z and phi values.
+     */
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < N)
+    {
+        float z = curand_uniform(state[index]);
+        z *= 2;
+        z -= 1;
+        float phi = curand_uniform(state[index]);
+        phi *= 2*PI;
+        float theta = acosf(z);
+        float rho = sqrtf(initVel[0]*initVel[0] +
+                          initVel[1]*initVel[1] +
+                          initVel[2]*initVel[2]);
+        postVel[index][0] = rho * sinf(phi) * cosf(theta);
+        postVel[index][1] = rho * sinf(phi) * sinf(theta);
+        postVel[index][2] = rho * z;
+    }
+}

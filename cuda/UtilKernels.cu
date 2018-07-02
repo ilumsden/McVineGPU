@@ -2,6 +2,10 @@
 
 #include "UtilKernels.hpp"
 
+#ifndef PI
+#define PI 3.14159265358979323846f
+#endif
+
 __device__ bool solveQuadratic(float a, float b, float c, float &x0, float &x1)
 {
     // Calculates the discriminant and returns false if it is less than 0.
