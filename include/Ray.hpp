@@ -20,6 +20,8 @@ struct Ray
         origin[0] = a;
         origin[1] = b;
         origin[2] = c;
+        t = 0;
+        prob = 1;
     }
 
     // Alternate constructor that explicitly sets all data.
@@ -28,14 +30,58 @@ struct Ray
     {
         origin[0] = a; origin[1] = b; origin[2] = c;
         vel[0] = va; vel[1] = vb; vel[2] = vc;
+        t = 0;
+        prob = 1;
     }
+
+    Ray(double a, double b, double c,
+        double va, double vb, double vc,
+        double time, double p)
+        : Ray(a, b, c, va, vb, vc)    
+    { 
+        t = time; 
+        prob = p;
+    }
+
     // This function provides an easy mechanism to change the velocity values.
     void setVelocities(double a, double b, double c)
     {
         vel[0] = a; vel[1] = b; vel[2] = c;
     }
 
+    void setTime(double time) { t = time; }
+
+    void setProbability(double p) { prob = p; }
+
+    void update(double a, double b, double c, double time)
+    {
+        origin[0] = a;
+        origin[1] = b;
+        origin[2] = c;
+        t = time;
+    }
+
+    void update(double va, double vb, double vc)
+    {
+        vel[0] = va;
+        vel[1] = vb;
+        vel[2] = vc;
+    }
+
+    void update(double p) { prob = p; }
+
+    void update(double a, double b, double c,
+                double va, double vb, double vc,
+                double time, double p)
+    {
+        update(a, b, c, time);
+        update(va, vb, vc);
+        update(p);
+    }
+
     Vec3<float> origin, vel;
+
+    float t, prob;
 };
 
 #endif

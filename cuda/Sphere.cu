@@ -37,6 +37,7 @@ void Sphere::intersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     intersectSphere<<<numBlocks, blockSize>>>(d_origins, d_vel,
                                               radius,
                                               N, device_time, intersect);
+    forceIntersectionOrder<<<numBlocks, blockSize>>>(device_time, intersect, N);
     CudaErrchkNoCode();
     /* The data from device_time and intersect is copied into
      * int_times and int_coords respectively.

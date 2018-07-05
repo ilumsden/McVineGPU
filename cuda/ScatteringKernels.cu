@@ -3,6 +3,7 @@
 __device__ void randCoord(Vec3<float> &orig, Vec3<float> &vel,
                           float *time,
                           Vec3<float> &pos,
+                          float &scat_time,
                           curandState *state)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -13,16 +14,17 @@ __device__ void randCoord(Vec3<float> &orig, Vec3<float> &vel,
     // cuRand is used to generate a random time between 0 and dt.
     float randt = curand_uniform(&(state[index]));
     randt *= dt;
+    scat_time = randt + time[0];
     /* Basic kinematics are used to calculate the coordinates of
      * the randomly chosen scattering site.
      */
-    pos = orig + (vel*(randt + time[0]));
+    pos = orig + (vel*scat_time);
 }
 
 __global__ void calcScatteringSites(float *ts, 
                                     Vec3<float> *orig, Vec3<float> *vel,
-                                    Vec3<float> *pos, curandState *state,
-                                    const int N)
+                                    Vec3<float> *pos, float *scat_times,
+                                    curandState *state, const int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     // This is done to prevent excess threads from interfering in the code.
@@ -39,24 +41,23 @@ __global__ void calcScatteringSites(float *ts,
              * case, the times and the corresponding intersection
              * coordinates are swapped.
              */
-            if (ts[2*index] > ts[2*index+1])
+            /*if (ts[2*index] > ts[2*index+1])
             {
                 float tmpt;
                 tmpt = ts[2*index];
                 ts[2*index] = ts[2*index+1];
                 ts[2*index+1] = tmpt;
-            }
+            }*/
             /* The randCoord function is called to determine the
              * scattering site.
              */
-            randCoord(orig[index], vel[index], &(ts[2*index]), pos[index], state);
+            randCoord(orig[index], vel[index], &(ts[2*index]), pos[index], scat_times[index], state);
         }
     }
 }
 
-__global__ void elasticScatteringKernel(const float *int_times,
-                                        const Vec3<float> *initVel,
-                                        Vec3<float> *postVel,
+__global__ void elasticScatteringKernel(const float *ray_time,
+                                        Vec3<float> *vel,
                                         curandState *state,
                                         const int N)
 {
@@ -64,7 +65,7 @@ __global__ void elasticScatteringKernel(const float *int_times,
      * z and phi values.
      */
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (index < N && (int_times[2*index] > 0 && int_times[2*index+1] > 0))
+    if (index < N && ray_time[index] > 0)
     {
         float z = curand_uniform(&(state[index]));
         z *= 2;
@@ -72,9 +73,9 @@ __global__ void elasticScatteringKernel(const float *int_times,
         float phi = curand_uniform(&(state[index]));
         phi *= 2*PI;
         float theta = acosf(z);
-        float r = initVel[index].length();        
-        postVel[index][0] = r * cosf(phi) * sinf(theta);
-        postVel[index][1] = r * sinf(phi) * sinf(theta);
-        postVel[index][2] = r * z;
+        float r = vel[index].length();        
+        vel[index][0] = r * cosf(phi) * sinf(theta);
+        vel[index][1] = r * sinf(phi) * sinf(theta);
+        vel[index][2] = r * z;
     }
 }

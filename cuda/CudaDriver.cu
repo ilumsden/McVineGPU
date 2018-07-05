@@ -13,7 +13,7 @@
 #include "ScatteringKernels.hpp"
 #include "Error.hpp"
 
-CudaDriver::CudaDriver(const std::vector< std::shared_ptr<Ray> > &rays, int bS)
+CudaDriver::CudaDriver(std::vector< std::shared_ptr<Ray> > &rays, int bS)
 { 
     N = (int)(rays.size());
     // Calculates the CUDA launch parameters using bS
@@ -23,21 +23,30 @@ CudaDriver::CudaDriver(const std::vector< std::shared_ptr<Ray> > &rays, int bS)
     /* Allocates both host and device memory for the float arrays that
      * will be used to store the data passed to the CUDA functions.
      */
+    rayptr = &rays;
     origins = (Vec3<float>*)malloc(N*sizeof(Vec3<float>));
     CudaErrchk( cudaMalloc(&d_origins, N*sizeof(Vec3<float>)) );
     vel = (Vec3<float>*)malloc(N*sizeof(Vec3<float>));
     CudaErrchk( cudaMalloc(&d_vel, N*sizeof(Vec3<float>)) );
+    times = (float*)malloc(N*sizeof(float));
+    CudaErrchk( cudaMalloc(&d_times, N*sizeof(float)) );
+    probs = (float*)malloc(N*sizeof(float));
+    CudaErrchk( cudaMalloc(&d_probs, N*sizeof(float)) );
     // Copies the data from the rays to the host arrays.
     int c = 0;
     for (auto ray : rays)
     {
         origins[c] = ray->origin;
         vel[c] = ray->vel;
+        times[c] = ray->t;
+        probs[c] = ray->prob;
         c++;
     }
     // Copies the data from the host arrays to the device arrays.
     CudaErrchk( cudaMemcpy(d_origins, origins, N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
     CudaErrchk( cudaMemcpy(d_vel, vel, N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+    CudaErrchk( cudaMemcpy(d_times, times, N*sizeof(float), cudaMemcpyHostToDevice) );
+    CudaErrchk( cudaMemcpy(d_probs, probs, N*sizeof(float), cudaMemcpyHostToDevice) );
 }
 
 CudaDriver::~CudaDriver()
@@ -45,9 +54,54 @@ CudaDriver::~CudaDriver()
     // Frees the memory for the host-side arrays.
     free(origins);
     free(vel);
+    free(times);
+    free(probs);
     // Frees the memory for the device-side arrays.
     CudaErrchk( cudaFree(d_origins) );
     CudaErrchk( cudaFree(d_vel) );
+    CudaErrchk( cudaFree(d_times) );
+    CudaErrchk( cudaFree(d_probs) );
+}
+
+void CudaDriver::printData(const std::string &fname)
+{
+    std::streambuf *coutbuf = std::cout.rdbuf();
+    std::fstream fout;
+    if (fname != std::string())
+    {
+        fout.open(fname.c_str(), std::ios::out);
+        if (!fout.is_open())
+        {
+            std::cerr << fname << " cannot be openned.\n";
+            exit(-2);
+        }
+        std::cout.rdbuf(fout.rdbuf());
+    }
+    std::string buf = "        ";
+    std::cout << "Position" << " " << buf << " " << buf << " || "
+              << "Velocity" << " " << buf << " " << buf << " || "
+              << "  Time  " << " || " << "Probability" << "\n\n";
+    for (int i = 0; i < N; i++)
+    {
+        std::cout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+	         << origins[i][0]
+		 << " " << origins[i][1]
+		 << " " << origins[i][2]
+		 << " || "
+                 << vel[i][0]
+                 << " " << vel[i][1]
+                 << " " << vel[i][2]
+                 << " || "
+                 << times[i]
+                 << " || "
+                 << probs[i]
+                 << "\n";
+    }
+    std::cout.rdbuf(coutbuf);
+    if (fname != std::string())
+    {
+        fout.close();
+    }
 }
 
 void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b, 
@@ -101,8 +155,14 @@ void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b,
 }
 
 void CudaDriver::findScatteringSites(const std::vector<float> &int_times, 
-                                     std::vector< Vec3<float> > &sites)
+                                     const std::vector< Vec3<float> > &int_coords)
+                                     //std::vector< Vec3<float> > &sites)
 {
+    // Uncomment with printing
+    //std::vector< Vec3<float> > tmp;
+    //tmp.resize(N);
+    //Vec3<float> *ta = tmp.data();
+    //memcpy(ta, origins, N*sizeof(Vec3<float>));
     // Stores the sizes of the `int_times` and `int_coords` vectors for later
     int tsize = (int)(int_times.size());
     /* Allocates memory for two device-side arrays that store the
@@ -119,8 +179,11 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     CudaErrchk( cudaMalloc(&pos, N*sizeof(Vec3<float>)) );
     initArray< Vec3<float> ><<<numBlocks, blockSize>>>(pos, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
     CudaErrchkNoCode();
+    float *scat_times;
+    CudaErrchk( cudaMalloc(&scat_times, N*sizeof(float)) );
+    initArray<float><<<numBlocks, blockSize>>>(scat_times, N, -5);
     // Resizes `sites` so that it can store the contents of `pos`.
-    sites.resize(N);
+    //sites.resize(N);
     /* Allocates an array of curandStates on the device to control
      * the random number generation.
      */
@@ -139,56 +202,76 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     printf("Rand Prep Complete\n    Summary: Time = %f\n", time);
     // Calls the kernel for determining the scattering sites for the neutrons
     //calcScatteringSites<<<numBlocks, blockSize>>>(ts, inters, pos, state, N);
-    calcScatteringSites<<<numBlocks, blockSize>>>(ts, d_origins, d_vel, pos, state, N);
+    calcScatteringSites<<<numBlocks, blockSize>>>(ts, d_origins, d_vel, pos, scat_times, state, N);
+    propagate<<<numBlocks, blockSize>>>(d_origins, d_times, pos, scat_times, N);
     CudaErrchkNoCode();
-    // Copies the post-kernel contents of `pos` into `sites`.
-    Vec3<float>* s = sites.data();
-    CudaErrchk( cudaMemcpy(s, pos, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
-    // Opens a file stream and prints the 
-    // relevant data to scatteringSites.txt
-    // NOTE: this is for debugging purposes only. This will be removed later.
-    std::fstream fout;
+    Vec3<float> *ic;
+    CudaErrchk( cudaMalloc(&ic, 2*N*sizeof(Vec3<float>)) );
+    CudaErrchk( cudaMemcpy(ic, int_coords.data(), 2*N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+    printf("attenuation = %f\n", atten);
+    updateProbability<<<numBlocks, blockSize>>>(d_probs, d_origins, ic, atten, N);
+    CudaErrchkNoCode();
+    CudaErrchk( cudaMemcpy(origins, d_origins, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaMemcpy(times, d_times, N*sizeof(float), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaMemcpy(probs, d_probs, N*sizeof(float), cudaMemcpyDeviceToHost) );
+    /*std::fstream fout;
     fout.open("scatteringSites.txt", std::ios::out);
     if (!fout.is_open())
     {
         std::cerr << "scatteringSites.txt could not be opened.\n";
         exit(-2);
     }
-    for (int i = 0; i < (int)(sites.size()); i++)
+    for (int i = 0; i < N; i++)
     {
-            int ind = i;
-            fout << "\n";
-            fout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
-                 << origins[ind][0] << " " << origins[ind][1] << " " << origins[ind][2] << " || "
-                 << vel[ind][0] << " " << vel[ind][1] << " " << vel[ind][2] << " || "
-                 << int_times[2*ind] << " " << int_times[2*ind+1] << " | " 
-                 << sites[i][0] << "\n";
-            std::string buf = "        ";
-            fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << "    " << buf << " " << buf << " | "
-<< std::fixed << std::setprecision(5) << std::setw(8) << std::right << sites[i][1] << "\n";
-            fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << "    " << buf << " " << buf << " | "
-<< std::fixed << std::setprecision(5) << std::setw(8) << std::right << sites[i][2] << "\n";
+        int ind = 2*i;
+        fout << "\n";
+        fout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+             << tmp[i][0] << " " << tmp[i][1] << " " << tmp[i][2] << " || "
+             << vel[i][0] << " " << vel[i][1] << " " << vel[i][2] << " || "
+             << int_times[ind] << " " << int_times[ind+1] << " | "
+             << origins[i][0] << "\n";
+        std::string buf = "        ";
+        fout << buf << " " << buf << " " << buf << "    "
+             << buf << " " << buf << " " << buf << "    "
+             << buf << " " << buf << "   "
+             << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+             << origins[i][1] << "\n";
+        fout << buf << " " << buf << " " << buf << "    "
+             << buf << " " << buf << " " << buf << "    "
+             << buf << " " << buf << "   "
+             << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+             << origins[i][2] << "\n";
+        fout << buf << " " << buf << " " << buf << "    "
+             << buf << " " << buf << " " << buf << "    "
+             << buf << " " << buf << "   "
+             << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+             << times[i] << "\n";
     }
-    fout.close();
+    fout.close();*/
     // Frees the device memory allocated above.
     CudaErrchk( cudaFree(ts) );
-    //cudaFree(inters);
+    CudaErrchk( cudaFree(ic) );
     CudaErrchk( cudaFree(pos) );
     CudaErrchk( cudaFree(state) );
     return;
 }
 
-void CudaDriver::findScatteringVels(const std::vector<float> &int_times,
-                                    std::vector< Vec3<float> > &scattering_vels)
+void CudaDriver::findScatteringVels()//const std::vector<float> &int_times)//,
+                                    //std::vector< Vec3<float> > &scattering_vels)
 {
-    Vec3<float> *d_postVel;
+    /*Vec3<float> *d_postVel;
     CudaErrchk( cudaMalloc(&d_postVel, N*sizeof(Vec3<float>)) );
-    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_postVel, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
-    float *d_times;
+    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_postVel, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));*/
+    /*float *d_times;
     CudaErrchk( cudaMalloc(&d_times, 2*N*sizeof(float)) );
-    CudaErrchk( cudaMemcpy(d_times, int_times.data(), 2*N*sizeof(float), cudaMemcpyHostToDevice) );
-    scattering_vels.resize(N);
-    CudaErrchkNoCode();
+    CudaErrchk( cudaMemcpy(d_times, int_times.data(), 2*N*sizeof(float), cudaMemcpyHostToDevice) );*/
+    //scattering_vels.resize(N);
+    //CudaErrchkNoCode();
+    // Uncomment during printing
+    //std::vector< Vec3<float> > tmp;
+    //tmp.resize(N);
+    //Vec3<float> *ta = tmp.data();
+    //memcpy(ta, vel, N*sizeof(Vec3<float>));
     curandState *state;
     CudaErrchk( cudaMalloc(&state, numBlocks*blockSize*sizeof(curandState)) );
     auto start = std::chrono::steady_clock::now();
@@ -200,38 +283,31 @@ void CudaDriver::findScatteringVels(const std::vector<float> &int_times,
     printf("Rand Prep Complete\n    Summary: Time = %f\n", time);
     elasticScatteringKernel<<<numBlocks, blockSize>>>(d_times,
                                                       d_vel,
-                                                      d_postVel,
                                                       state, N);
     CudaErrchkNoCode();
-    Vec3<float> *sv = scattering_vels.data();
-    CudaErrchk( cudaMemcpy(sv, d_postVel, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaMemcpy(vel, d_vel, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+    //Vec3<float> *sv = scattering_vels.data();
+    //CudaErrchk( cudaMemcpy(sv, d_postVel, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
     // Opens a file stream and prints the 
     // relevant data to scatteringVels.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
-    std::fstream fout;
+    /*std::fstream fout;
     fout.open("scatteringVels.txt", std::ios::out);
     if (!fout.is_open())
     {
-        std::cerr << "scatteringSites.txt could not be opened.\n";
+        std::cerr << "scatteringVels.txt could not be opened.\n";
         exit(-2);
     }
-    for (int i = 0; i < (int)(scattering_vels.size()); i++)
+    for (int i = 0; i < N; i++)
     {
-            int ind = 2*i;
-            fout << "\n";
-            fout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
-                 << origins[i][0] << " " << origins[i][1] << " " << origins[i][2] << " || "
-                 << vel[i][0] << " " << vel[i][1] << " " << vel[i][2] << " || " << int_times[ind] << " " << int_times[ind+1] << " | "
-                 << scattering_vels[i][0] << "\n";
-            std::string buf = "        ";
-            fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << "    " << buf << " " << buf << " | "
-<< std::fixed << std::setprecision(5) << std::setw(8) << std::right << scattering_vels[i][1] << "\n";
-            fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << "    " << buf << " " << buf << " | "
-<< std::fixed << std::setprecision(5) << std::setw(8) << std::right << scattering_vels[i][2] << "\n";
+        fout << "\n";
+        fout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+             << tmp[i][0] << " " << tmp[i][1] << " " << tmp[i][2] << " || "
+             << vel[i][0] << " " << vel[i][1] << " " << vel[i][2] << "\n";
     }
-    fout.close();
-    CudaErrchk( cudaFree(d_postVel) );
-    CudaErrchk( cudaFree(d_times) );
+    fout.close();*/
+    //CudaErrchk( cudaFree(d_postVel) );
+    //CudaErrchk( cudaFree(d_times) );
     CudaErrchk( cudaFree(state) );
 }
 
@@ -248,17 +324,17 @@ void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
     double time = std::chrono::duration<double>(stop - start).count();
     printf("handleRectIntersect: %f\n", time);
     // Creates the vector that will store the scattering coordinates
-    std::vector< Vec3<float> > scattering_sites;
+    //std::vector< Vec3<float> > scattering_sites;
     // Starts the scattering site calculation
     start = std::chrono::steady_clock::now();
-    findScatteringSites(int_times, scattering_sites);
+    findScatteringSites(int_times, int_coords);//scattering_sites);
     stop = std::chrono::steady_clock::now();
     time = std::chrono::duration<double>(stop - start).count();
     printf("findScatteringSites: %f\n", time);
-    /*std::vector< Vec3<float> > scattering_vels;
+    //std::vector< Vec3<float> > scattering_vels;
     start = std::chrono::steady_clock::now();
-    findScatteringVels(int_times, scattering_vels);
+    findScatteringVels();//int_times, scattering_vels);
     stop = std::chrono::steady_clock::now();
     time = std::chrono::duration<double>(stop - start).count();
-    printf("findScatteringTimes: %f\n", time);*/
+    printf("findScatteringTimes: %f\n", time);
 }

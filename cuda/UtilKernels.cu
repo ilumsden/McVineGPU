@@ -55,8 +55,52 @@ __global__ void simplifyTimes(const float *times, const int N, const int groupSi
     }
 }
 
+__global__ void forceIntersectionOrder(float *ts, Vec3<float> *coords,
+                                       const int N)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < 2*N)
+    {
+        if (ts[2*index] > ts[2*index+1])
+        {
+            float tmpt;
+            Vec3<float> tmpc;
+            tmpt = ts[2*index];
+            ts[2*index] = ts[2*index+1];
+            ts[2*index+1] = tmpt;
+            tmpc = coords[2*index];
+            coords[2*index] = coords[2*index+1];
+            coords[2*index+1] = tmpc;
+        }
+    }
+}
+
 __global__ void prepRand(curandState *state, int seed)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     curand_init(((seed << 10) + idx), 0, 0, &state[idx]); 
+}
+
+__global__ void propagate(Vec3<float> *orig, float *ray_times,
+                          Vec3<float> *scat_pos, float *scat_times,
+                          const int N)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < N)
+    {
+        orig[index] = scat_pos[index];
+        ray_times[index] = scat_times[index];
+    }
+}
+
+__global__ void updateProbability(float *ray_prob,
+                                  Vec3<float> *orig, Vec3<float> *int_coords,
+                                  const float atten, const int N)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < N)
+    {
+        float d = (orig[index] - int_coords[2*index]).length();
+        ray_prob[index] *= expf(-(d/atten));
+    }
 }

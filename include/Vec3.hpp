@@ -5,6 +5,8 @@
 #include <cstdio>
 #include <stdexcept>
 
+#include "SystemVars.hpp"
+
 /* The Vec3 class is a templated class that represents
  * a three-dimensional vector and the operations that can
  * be applied on said vector.

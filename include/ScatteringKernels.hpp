@@ -10,8 +10,9 @@
  * This function can be called on device only.
  */
 __device__ void randCoord(Vec3<float> &orig, Vec3<float> &vel,
-                          float *time,
+                          float *int_times,
                           Vec3<float> &pos,
+                          float &scat_time,
                           curandState *state);
 
 /* This function uses the intersection points (int_pts)
@@ -25,12 +26,11 @@ __device__ void randCoord(Vec3<float> &orig, Vec3<float> &vel,
  */
 __global__ void calcScatteringSites(float *ts, 
                                     Vec3<float> *orig, Vec3<float> *vel,
-                                    Vec3<float> *pos, curandState *state,
-                                    const int N);
+                                    Vec3<float> *pos, float *scat_times,
+                                    curandState *state, const int N);
 
-__global__ void elasticScatteringKernel(const float *int_times,
-                                        const Vec3<float> *initVel,
-                                        Vec3<float> *postVel,
+__global__ void elasticScatteringKernel(const float *ray_time,
+                                        Vec3<float> *vel,
                                         curandState *state,
                                         const int N);
 

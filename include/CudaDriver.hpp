@@ -9,6 +9,7 @@
 #include "Pyramid.hpp"
 #include "Ray.hpp"
 #include "Sphere.hpp"
+#include "SystemVars.hpp"
 
 /* This class controlls the execution of CUDA kernels.
  * Currently, it is mostly ment to be a convenient device for testing
@@ -26,7 +27,7 @@ class CudaDriver
          * bS parameter to set the members that dictate the CUDA
          * kernel launch parameters (blockSize and numBlocks).
          */
-        CudaDriver(const std::vector< std::shared_ptr<Ray> > &rays, int bS);
+        CudaDriver(std::vector< std::shared_ptr<Ray> > &rays, int bS);
 
         /* This function deallocates the memory allocated
          * in the constructor.
@@ -37,6 +38,9 @@ class CudaDriver
          * the calculations currently implemented.
          */
         void runCalculations(std::shared_ptr<AbstractShape> &b);
+
+        void printData(const std::string &fname=std::string());    
+
     private:
 
         // This function is used to initiate the intersection calculation.
@@ -46,15 +50,20 @@ class CudaDriver
 
         // This function is used to initiate the scattering site calculation.
         void findScatteringSites(const std::vector<float> &int_times, 
-                                 std::vector< Vec3<float> > &sites);
+                                 const std::vector< Vec3<float> > &int_coords);
+                                 //std::vector< Vec3<float> > &sites);
 
-        void findScatteringVels(const std::vector<float> &int_times,
-                                std::vector< Vec3<float> > &scattering_vels);
+        void findScatteringVels();//const std::vector<float> &int_times);//,
+                                //std::vector< Vec3<float> > &scattering_vels);
 
         // These members store the host-side copies of the neutron data.
         Vec3<float> *origins, *vel;
+        float *times, *probs;
         // These members store the device-side copies of the neutron data.
         Vec3<float> *d_origins, *d_vel;
+        float *d_times, *d_probs;
+        // This member stores a pointer to the vector of rays.
+        std::vector< std::shared_ptr<Ray> > *rayptr;
         // This int stores the number of neutrons (size of the above data).
         int N;
         // These are the CUDA launch parameters. 

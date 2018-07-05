@@ -40,6 +40,7 @@ void Cylinder::intersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
                                                 radius, height,
                                                 N, device_time, intersect);
     simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 4, simp_times);
+    forceIntersectionOrder<<<numBlocks, blockSize>>>(device_time, intersect, N);
     CudaErrchkNoCode();
     /* The data from simp_times and intersect is copied into
      * int_times and int_coords respectively.

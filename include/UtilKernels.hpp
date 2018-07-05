@@ -9,6 +9,7 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
+#include "SystemVars.hpp"
 #include "Vec3.hpp"
 
 #ifndef PI
@@ -57,10 +58,21 @@ __device__ bool solveQuadratic(float a, float b, float c,
 __global__ void simplifyTimes(const float* ts, const int N, 
                               const int groupSize, float* simp);
 
+__global__ void forceIntersectionOrder(float *ts, Vec3<float> *coords,
+                                       const int N);
+
 /* This function seeds and initializes a cuRand random number generator
  * using the cuRand States stored in state and the seed value "seed."
  * This function can be called from host.
  */
 __global__ void prepRand(curandState *state, int seed);
+
+__global__ void propagate(Vec3<float> *orig, float *ray_times,
+                          Vec3<float> *scat_pos, float *scat_times,
+                          const int N);
+
+__global__ void updateProbability(float *ray_prob,
+                                  Vec3<float> *orig, Vec3<float> *int_coords,
+                                  const float atten, const int N);
 
 #endif

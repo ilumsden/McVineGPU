@@ -44,6 +44,7 @@ void Box::intersect(Vec3<float> *d_origins,
                                            X, Y, Z,
                                            N, device_time, intersect);
     simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 6, simp_times);
+    forceIntersectionOrder<<<numBlocks, blockSize>>>(device_time, intersect, N);
     CudaErrchkNoCode();
     /* The data from simp_times and intersect is copied into
      * int_times and int_coords respectively.

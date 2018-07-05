@@ -7,6 +7,7 @@
 
 #include "IntersectKernels.hpp"
 #include "Ray.hpp"
+#include "SystemVars.hpp"
 
 /* Abstract Shape is the parent interface for the primitive
  * solids defined in McVine.
