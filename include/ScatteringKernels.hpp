@@ -29,6 +29,10 @@ __global__ void calcScatteringSites(float *ts,
                                     Vec3<float> *pos, float *scat_times,
                                     curandState *state, const int N);
 
+/* This function randomly, but uniformly generates the post-elastic
+ * scattering velocity vector and stores the new velocity in the
+ * neutron state velocity array.
+ */
 __global__ void elasticScatteringKernel(const float *ray_time,
                                         Vec3<float> *vel,
                                         curandState *state,

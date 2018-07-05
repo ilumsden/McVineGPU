@@ -36,18 +36,6 @@ __global__ void calcScatteringSites(float *ts,
          */
         if (ts[2*index] != -5 && ts[2*index+1] != -5)
         {
-            /* The randCoord function assumes that the first time
-             * is smaller than the second. If this is not the
-             * case, the times and the corresponding intersection
-             * coordinates are swapped.
-             */
-            /*if (ts[2*index] > ts[2*index+1])
-            {
-                float tmpt;
-                tmpt = ts[2*index];
-                ts[2*index] = ts[2*index+1];
-                ts[2*index+1] = tmpt;
-            }*/
             /* The randCoord function is called to determine the
              * scattering site.
              */
@@ -61,19 +49,34 @@ __global__ void elasticScatteringKernel(const float *ray_time,
                                         curandState *state,
                                         const int N)
 {
-    /* To start each curandState will be used to generate the random
-     * z and phi values.
-     */
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N && ray_time[index] > 0)
     {
+        /* The z coordinate of the unit velocity vector is chosen
+         * at random and manipulated so that it falls between
+         * -1 and 1.
+         */
         float z = curand_uniform(&(state[index]));
         z *= 2;
         z -= 1;
+        /* The spherical coordinate `phi` is randomly chosen
+         * and manipulated so that it falls between 0 and 2*Pi.
+         */
         float phi = curand_uniform(&(state[index]));
         phi *= 2*PI;
+        /* Since z is based on a unit vector, theta is calculated
+         * using standard Cartesian-to-Spherical coordinate conversion
+         * with r = 1.
+         */
         float theta = acosf(z);
+        /* Since the scattering is elastic, the post-scattering velocity
+         * must have the same magnitude as the pre-scattering velocity.
+         * As a result, the pre-scattering magnitude must be recorded.
+         */
         float r = vel[index].length();        
+        /* The post-scattering velocity is calculated using standard
+         * Spherical-to-Cartesian conversion.
+         */
         vel[index][0] = r * cosf(phi) * sinf(theta);
         vel[index][1] = r * sinf(phi) * sinf(theta);
         vel[index][2] = r * z;

@@ -39,6 +39,10 @@ class CudaDriver
          */
         void runCalculations(std::shared_ptr<AbstractShape> &b);
 
+        /* This function prints the data stored for each neutron
+         * based on the following member arrays: origins, vel,
+         * times, and probs. 
+         */
         void printData(const std::string &fname=std::string());    
 
     private:
@@ -51,10 +55,9 @@ class CudaDriver
         // This function is used to initiate the scattering site calculation.
         void findScatteringSites(const std::vector<float> &int_times, 
                                  const std::vector< Vec3<float> > &int_coords);
-                                 //std::vector< Vec3<float> > &sites);
 
-        void findScatteringVels();//const std::vector<float> &int_times);//,
-                                //std::vector< Vec3<float> > &scattering_vels);
+        // This function is used to initiate the elastic scattering calculation.
+        void findScatteringVels();
 
         // These members store the host-side copies of the neutron data.
         Vec3<float> *origins, *vel;

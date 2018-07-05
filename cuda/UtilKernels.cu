@@ -61,6 +61,10 @@ __global__ void forceIntersectionOrder(float *ts, Vec3<float> *coords,
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < 2*N)
     {
+        /* If the first listed intersection comes after the second
+         * listed intersection, the two intersection times and
+         * coordinates are swapped.
+         */
         if (ts[2*index] > ts[2*index+1])
         {
             float tmpt;
@@ -88,6 +92,10 @@ __global__ void propagate(Vec3<float> *orig, float *ray_times,
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N)
     {
+        /* Updates the neutron's main position and time
+         * data with the values passed through `scat_pos`
+         * and `scat_times`.
+         */
         orig[index] = scat_pos[index];
         ray_times[index] = scat_times[index];
     }
@@ -100,6 +108,10 @@ __global__ void updateProbability(float *ray_prob,
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N)
     {
+        /* Updates the neutron's probability attribute based on
+         * the absorption associated with travalling through the
+         * scattering body to the scattering site.
+         */
         float d = (orig[index] - int_coords[2*index]).length();
         ray_prob[index] *= expf(-(d/atten));
     }

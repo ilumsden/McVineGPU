@@ -12,6 +12,13 @@
 #include "SystemVars.hpp"
 #include "Vec3.hpp"
 
+/* A macro definition for Pi.
+ * This is done so that the CUDA kernels can easily have access
+ * to the value of Pi without passing it as a paramter (CUDA does
+ * not have its own definition of Pi).
+ * The precision used was copied straight from McVine (although
+ * forcing it to be a float was not).
+ */
 #ifndef PI
 #define PI 3.14159265358979323846f
 #endif
@@ -67,10 +74,17 @@ __global__ void forceIntersectionOrder(float *ts, Vec3<float> *coords,
  */
 __global__ void prepRand(curandState *state, int seed);
 
+/* This function updates the neutrons' position and time data
+ * using the contents of the `scat_pos` and `scat_times` arrays.
+ */
 __global__ void propagate(Vec3<float> *orig, float *ray_times,
                           Vec3<float> *scat_pos, float *scat_times,
                           const int N);
 
+/* This function updates the neutrons' probability data using the
+ * neutrons' scattering positions, the coordinates of their entry into
+ * the material, and the material's attenuation.
+ */
 __global__ void updateProbability(float *ray_prob,
                                   Vec3<float> *orig, Vec3<float> *int_coords,
                                   const float atten, const int N);
