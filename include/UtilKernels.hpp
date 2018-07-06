@@ -63,7 +63,14 @@ __device__ bool solveQuadratic(float a, float b, float c,
  * This function can be called from host.
  */
 __global__ void simplifyTimes(const float* ts, const int N, 
-                              const int groupSize, float* simp);
+                              const int inputGroupSize,
+                              const int outputGroupSize,
+                              float* simp);
+
+__global__ void simplifyPoints(const Vec3<float> *pts, const int N,
+                               const int inputGroupSize, 
+                               const int outputGroupSize,
+                               Vec3<float> *simp);
 
 __global__ void forceIntersectionOrder(float *ts, Vec3<float> *coords,
                                        const int N);
@@ -86,7 +93,9 @@ __global__ void propagate(Vec3<float> *orig, float *ray_times,
  * the material, and the material's attenuation.
  */
 __global__ void updateProbability(float *ray_prob,
-                                  Vec3<float> *orig, Vec3<float> *int_coords,
+                                  Vec3<float> *p1, Vec3<float> *p0,
+                                  const int p1GroupSize,
+                                  const int p0GroupSize,
                                   const float atten, const int N);
 
 #endif

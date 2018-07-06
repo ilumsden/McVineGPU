@@ -121,13 +121,15 @@ int main(int argc, char **argv)
     printf("Data Creation: %f\n", createTime);
     // A CudaDriver object is created and used to run tests.
     auto consStart = std::chrono::steady_clock::now();
-    CudaDriver cd(rays, blockSize);
+    //CudaDriver cd(rays, blockSize);
+    CudaDriver cd(rays, b, blockSize);
     auto consStop = std::chrono::steady_clock::now();
     double consTime = std::chrono::duration<double>(consStop - consStart).count();
     printf("CudaDriver Constructor: %f\n", consTime);
-    cd.printData("precalc.txt");
-    cd.runCalculations(b);
-    cd.printData("postcalc.txt");
+    //cd.printData("precalc.txt");
+    //cd.runCalculations(b);
+    cd.runCalculations();
+    //cd.printData("postcalc.txt");
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("Total Time = %f s\n", time);

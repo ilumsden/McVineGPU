@@ -13,9 +13,11 @@
 #include "ScatteringKernels.hpp"
 #include "Error.hpp"
 
-CudaDriver::CudaDriver(std::vector< std::shared_ptr<Ray> > &rays, int bS)
+CudaDriver::CudaDriver(std::vector< std::shared_ptr<Ray> > &rays, 
+                       std::shared_ptr<AbstractShape> &shape, int bS)
 { 
     N = (int)(rays.size());
+    b = shape;
     // Calculates the CUDA launch parameters using bS
     blockSize = bS;
     numBlocks = (N + blockSize - 1) / blockSize;
@@ -115,14 +117,14 @@ void CudaDriver::printData(const std::string &fname)
     }
 }
 
-void CudaDriver::handleRectIntersect(std::shared_ptr<AbstractShape> &b, 
-                                     std::vector<float> &host_time,
-                                     std::vector< Vec3<float> > &int_coords)
+void CudaDriver::handleExteriorIntersect(//std::shared_ptr<AbstractShape> &b, 
+                                         std::vector<float> &host_time,
+                                         std::vector< Vec3<float> > &int_coords)
 {
     /* Calls the shape's intersect function.
      * Inheritance is used to choose the correct algorithm for intersection.
      */
-    b->intersect(d_origins, d_vel, N, blockSize, numBlocks, host_time, int_coords);
+    b->exteriorIntersect(d_origins, d_vel, N, blockSize, numBlocks, host_time, int_coords);
     // Opens a file stream and prints the relevant data to time.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
     /*std::fstream fout;
@@ -232,7 +234,7 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
      * for the absorption that occurs as a neutron travels through the
      * scattering body to the scattering site.
      */
-    updateProbability<<<numBlocks, blockSize>>>(d_probs, d_origins, ic, atten, N);
+    updateProbability<<<numBlocks, blockSize>>>(d_probs, d_origins, ic, 1, 2, atten, N);
     CudaErrchkNoCode();
     // Updates the host-side arrays for the edited neutron data.
     CudaErrchk( cudaMemcpy(origins, d_origins, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
@@ -331,7 +333,27 @@ void CudaDriver::findScatteringVels()
     CudaErrchk( cudaFree(state) );
 }
 
-void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
+void CudaDriver::handleInteriorIntersect()
+{
+    std::vector<float> int_times;
+    std::vector< Vec3<float> > int_coords;
+    b->interiorIntersect(d_origins, d_vel, N, blockSize, numBlocks, int_times, int_coords); 
+    float *exit_times;
+    CudaErrchk( cudaMalloc(&exit_times, N*sizeof(float)) );
+    CudaErrchk( cudaMemcpy(exit_times, int_times.data(), N*sizeof(float), cudaMemcpyHostToDevice) );
+    Vec3<float> *exit_coords;
+    CudaErrchk( cudaMalloc(&exit_coords, N*sizeof(Vec3<float>)) );
+    CudaErrchk( cudaMemcpy(exit_coords, int_coords.data(), N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+    updateProbability<<<numBlocks, blockSize>>>(d_probs, exit_coords, d_origins, 1, 1, atten, N);
+    propagate<<<numBlocks, blockSize>>>(d_origins, d_times, exit_coords, exit_times, N);
+    CudaErrchk( cudaMemcpy(origins, d_origins, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaMemcpy(times, d_times, N*sizeof(float), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaMemcpy(probs, d_probs, N*sizeof(float), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaFree(exit_times) );
+    CudaErrchk( cudaFree(exit_coords) );
+}
+
+void CudaDriver::runCalculations()//std::shared_ptr<AbstractShape> &b)
 {
     /* Creates the vectors that will store the intersection
      * times and coordinates.
@@ -340,10 +362,10 @@ void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
     std::vector< Vec3<float> > int_coords;
     // Starts the intersection calculation
     auto start = std::chrono::steady_clock::now();
-    handleRectIntersect(b, int_times, int_coords);
+    handleExteriorIntersect(int_times, int_coords);//b, int_times, int_coords);
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
-    printf("handleRectIntersect: %f\n", time);
+    printf("handleExteriorIntersect: %f\n", time);
     // Starts the scattering site calculation
     start = std::chrono::steady_clock::now();
     findScatteringSites(int_times, int_coords);
@@ -355,5 +377,5 @@ void CudaDriver::runCalculations(std::shared_ptr<AbstractShape> &b)
     findScatteringVels();
     stop = std::chrono::steady_clock::now();
     time = std::chrono::duration<double>(stop - start).count();
-    printf("findScatteringTimes: %f\n", time);
+    printf("findScatteringVels: %f\n", time);
 }

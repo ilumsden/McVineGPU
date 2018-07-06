@@ -37,18 +37,42 @@ __device__ bool solveQuadratic(float a, float b, float c, float &x0, float &x1)
     return true;
 }
 
-__global__ void simplifyTimes(const float *times, const int N, const int groupSize, float *simp)
+__global__ void simplifyTimes(const float *times, const int N, 
+                              const int inputGroupSize, 
+                              const int outputGroupSize,
+                              float *simp)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     // This is done to prevent excess threads from interfering in the code.
     if (index < N)
     {
         int count = 0;
-        for (int i = 0; i < groupSize; i++)
+        for (int i = 0; i < inputGroupSize; i++)
         {
-            if (times[groupSize * index + i] != -1 && count < 2)
+            if (times[inputGroupSize * index + i] != -1 && count < outputGroupSize)
             {
-                simp[2*index+count] = times[groupSize*index+i];
+                simp[outputGroupSize*index+count] = times[inputGroupSize*index+i];
+                count++;
+            }
+        }
+    }
+}
+
+__global__ void simplifyPoints(const Vec3<float> *pts, const int N, 
+                               const int inputGroupSize, 
+                               const int outputGroupSize,
+                               Vec3<float> *simp)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < N)
+    {
+        int count = 0;
+        for (int i = 0; i < inputGroupSize; i++)
+        {
+            if (pts[inputGroupSize*index+i] != Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX) 
+                && count < outputGroupSize)
+            {
+                simp[outputGroupSize*index+count] = times[inputGroupSize*index+i];
                 count++;
             }
         }
@@ -97,12 +121,14 @@ __global__ void propagate(Vec3<float> *orig, float *ray_times,
          * and `scat_times`.
          */
         orig[index] = scat_pos[index];
-        ray_times[index] = scat_times[index];
+        ray_times[index] += scat_times[index];
     }
 }
 
 __global__ void updateProbability(float *ray_prob,
-                                  Vec3<float> *orig, Vec3<float> *int_coords,
+                                  Vec3<float> *p1, Vec3<float> *p0,
+                                  const int p1GroupSize,
+                                  const int p0GroupSize,
                                   const float atten, const int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -112,7 +138,7 @@ __global__ void updateProbability(float *ray_prob,
          * the absorption associated with travalling through the
          * scattering body to the scattering site.
          */
-        float d = (orig[index] - int_coords[2*index]).length();
+        float d = (p1[p1GroupSize*index] - p0[p0GroupSize*index]).length();
         ray_prob[index] *= expf(-(d/atten));
     }
 }
