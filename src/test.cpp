@@ -126,10 +126,8 @@ int main(int argc, char **argv)
     auto consStop = std::chrono::steady_clock::now();
     double consTime = std::chrono::duration<double>(consStop - consStart).count();
     printf("CudaDriver Constructor: %f\n", consTime);
-    //cd.printData("precalc.txt");
     //cd.runCalculations(b);
     cd.runCalculations();
-    //cd.printData("postcalc.txt");
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("Total Time = %f s\n", time);

@@ -95,8 +95,8 @@ void Pyramid::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
      * This array will store the output of the simplifyPoints kernel.
      */
     Vec3<float> *simp_int;
-    CudaErrchk( cudaMalloc(&simp_times, N*sizeof(Vec3<float>)) );
-    initArray<float><<<numBlocks, blockSize>>>(simp_times, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
+    CudaErrchk( cudaMalloc(&simp_int, N*sizeof(Vec3<float>)) );
+    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(simp_int, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
     CudaErrchkNoCode();
     // These vectors are resized to match the size of the arrays above.
     int_times.resize(N);

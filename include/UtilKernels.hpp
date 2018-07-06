@@ -6,6 +6,7 @@
  * files later.
  */
 
+#include <cfloat>
 #include <curand.h>
 #include <curand_kernel.h>
 

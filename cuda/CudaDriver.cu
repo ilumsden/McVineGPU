@@ -127,7 +127,8 @@ void CudaDriver::handleExteriorIntersect(//std::shared_ptr<AbstractShape> &b,
     b->exteriorIntersect(d_origins, d_vel, N, blockSize, numBlocks, host_time, int_coords);
     // Opens a file stream and prints the relevant data to time.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
-    /*std::fstream fout;
+#if defined(DEBUG) || defined(PRINT1)
+    std::fstream fout;
     fout.open("time.txt", std::ios::out);
     if (!fout.is_open())
     {
@@ -136,7 +137,6 @@ void CudaDriver::handleExteriorIntersect(//std::shared_ptr<AbstractShape> &b,
     }
     for (int i = 0; i < (int)(int_coords.size()); i++)
     {
-        //printf("print i = %i\n", i);
         std::string buf = "        ";
         if (i % 2 == 0)
         {
@@ -163,18 +163,20 @@ void CudaDriver::handleExteriorIntersect(//std::shared_ptr<AbstractShape> &b,
         }
     }
     // Closes the file stream
-    fout.close();*/
+    fout.close();
+#endif
     return;
 }
 
 void CudaDriver::findScatteringSites(const std::vector<float> &int_times, 
                                      const std::vector< Vec3<float> > &int_coords)
 {
-    // Uncomment with printing
-    /*std::vector< Vec3<float> > tmp;
+#if defined(DEBUG) || defined(PRINT2)
+    std::vector< Vec3<float> > tmp;
     tmp.resize(N);
     Vec3<float> *ta = tmp.data();
-    memcpy(ta, origins, N*sizeof(Vec3<float>));*/
+    memcpy(ta, origins, N*sizeof(Vec3<float>));
+#endif
     // Stores the size of the `int_times` for later
     int tsize = (int)(int_times.size());
     /* Allocates memory for a device-side array that stores the
@@ -240,7 +242,8 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     CudaErrchk( cudaMemcpy(origins, d_origins, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
     CudaErrchk( cudaMemcpy(times, d_times, N*sizeof(float), cudaMemcpyDeviceToHost) );
     CudaErrchk( cudaMemcpy(probs, d_probs, N*sizeof(float), cudaMemcpyDeviceToHost) );
-    /*std::fstream fout;
+#if defined(DEBUG) || defined(PRINT2)
+    std::fstream fout;
     fout.open("scatteringSites.txt", std::ios::out);
     if (!fout.is_open())
     {
@@ -273,7 +276,8 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
              << std::fixed << std::setprecision(5) << std::setw(8) << std::right
              << times[i] << "\n";
     }
-    fout.close();*/
+    fout.close();
+#endif
     // Frees the device memory allocated above.
     CudaErrchk( cudaFree(ts) );
     CudaErrchk( cudaFree(ic) );
@@ -284,11 +288,12 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
 
 void CudaDriver::findScatteringVels()
 {
-    // Uncomment during printing
-    /*std::vector< Vec3<float> > tmp;
+#if defined(DEBUG) || defined(PRINT3)
+    std::vector< Vec3<float> > tmp;
     tmp.resize(N);
     Vec3<float> *ta = tmp.data();
-    memcpy(ta, vel, N*sizeof(Vec3<float>));*/
+    memcpy(ta, vel, N*sizeof(Vec3<float>));
+#endif
     /* Allocates an array of curandStates on the device to control
      * the random number generation.
      */
@@ -314,8 +319,8 @@ void CudaDriver::findScatteringVels()
     CudaErrchk( cudaMemcpy(vel, d_vel, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
     // Opens a file stream and prints the 
     // relevant data to scatteringVels.txt
-    // NOTE: this is for debugging purposes only. This will be removed later.
-    /*std::fstream fout;
+#if defined(DEBUG) || defined(PRINT3)
+    std::fstream fout;
     fout.open("scatteringVels.txt", std::ios::out);
     if (!fout.is_open())
     {
@@ -329,12 +334,19 @@ void CudaDriver::findScatteringVels()
              << tmp[i][0] << " " << tmp[i][1] << " " << tmp[i][2] << " || "
              << vel[i][0] << " " << vel[i][1] << " " << vel[i][2] << "\n";
     }
-    fout.close();*/
+    fout.close();
+#endif
     CudaErrchk( cudaFree(state) );
 }
 
 void CudaDriver::handleInteriorIntersect()
 {
+#if defined(DEBUG) || defined(PRINT4)
+    std::vector< Vec3<float> > tmp;
+    tmp.resize(N);
+    Vec3<float> *ta = tmp.data();
+    memcpy(ta, origins, N*sizeof(Vec3<float>));
+#endif
     std::vector<float> int_times;
     std::vector< Vec3<float> > int_coords;
     b->interiorIntersect(d_origins, d_vel, N, blockSize, numBlocks, int_times, int_coords); 
@@ -349,6 +361,41 @@ void CudaDriver::handleInteriorIntersect()
     CudaErrchk( cudaMemcpy(origins, d_origins, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
     CudaErrchk( cudaMemcpy(times, d_times, N*sizeof(float), cudaMemcpyDeviceToHost) );
     CudaErrchk( cudaMemcpy(probs, d_probs, N*sizeof(float), cudaMemcpyDeviceToHost) );
+#if defined(DEBUG) || defined(PRINT4)
+    std::fstream fout;
+    fout.open("exit.txt", std::ios::out);
+    if (!fout.is_open())
+    {
+        std::cerr << "exit.txt could not be openned.\n";
+        exit(-2);
+    }
+    for (int i = 0; i < N; i++)
+    {
+        std::string buf = "        ";
+        fout << "\n";
+        fout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+             << tmp[i][0] << " " << tmp[i][1] << " " << tmp[i][2] << " || "
+             << vel[i][0] << " " << vel[i][1] << " " << vel[i][2] << " | "
+             << origins[i][0] << "\n";
+        fout << buf << " " << buf << " " << buf << "    "
+             << buf << " " << buf << " " << buf << "   "
+             << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+             << origins[i][1] << "\n";
+        fout << buf << " " << buf << " " << buf << "    "
+             << buf << " " << buf << " " << buf << "   "
+             << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+             << origins[i][2] << "\n";
+        fout << buf << " " << buf << " " << buf << "    "
+             << buf << " " << buf << " " << buf << "   "
+             << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+             << times[i] << "\n";
+        fout << buf << " " << buf << " " << buf << "    "
+             << buf << " " << buf << " " << buf << "   "
+             << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+             << probs[i] << "\n";
+    }
+    fout.close();
+#endif
     CudaErrchk( cudaFree(exit_times) );
     CudaErrchk( cudaFree(exit_coords) );
 }
@@ -378,4 +425,9 @@ void CudaDriver::runCalculations()//std::shared_ptr<AbstractShape> &b)
     stop = std::chrono::steady_clock::now();
     time = std::chrono::duration<double>(stop - start).count();
     printf("findScatteringVels: %f\n", time);
+    start = std::chrono::steady_clock::now();
+    handleInteriorIntersect();
+    stop = std::chrono::steady_clock::now();
+    time = std::chrono::duration<double>(stop - start).count();
+    printf("handleInteriorIntersect: %f\n", time);
 }

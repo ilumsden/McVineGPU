@@ -72,7 +72,7 @@ __global__ void simplifyPoints(const Vec3<float> *pts, const int N,
             if (pts[inputGroupSize*index+i] != Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX) 
                 && count < outputGroupSize)
             {
-                simp[outputGroupSize*index+count] = times[inputGroupSize*index+i];
+                simp[outputGroupSize*index+count] = pts[inputGroupSize*index+i];
                 count++;
             }
         }
