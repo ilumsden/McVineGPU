@@ -49,7 +49,8 @@ __global__ void simplifyTimes(const float *times, const int N,
         int count = 0;
         for (int i = 0; i < inputGroupSize; i++)
         {
-            if (times[inputGroupSize * index + i] != -1 && count < outputGroupSize)
+            //if (times[inputGroupSize * index + i] != -1 && count < outputGroupSize)
+            if (times[inputGroupSize * index + i] >= 0 && count < outputGroupSize)
             {
                 simp[outputGroupSize*index+count] = times[inputGroupSize*index+i];
                 count++;
@@ -106,7 +107,8 @@ __global__ void forceIntersectionOrder(float *ts, Vec3<float> *coords,
 __global__ void prepRand(curandState *state, int seed)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    curand_init(((seed << 10) + idx), 0, 0, &state[idx]); 
+    //curand_init(((seed >> 10) + idx), 0, 0, &state[idx]); 
+    curand_init(seed, idx, 0, &state[idx]); 
 }
 
 __global__ void propagate(Vec3<float> *orig, float *ray_times,

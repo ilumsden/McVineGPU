@@ -94,7 +94,7 @@ void Cylinder::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
      */
     Vec3<float> *simp_int;
     CudaErrchk( cudaMalloc(&simp_int, N*sizeof(Vec3<float>)) );
-    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(simp_times, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
+    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(simp_int, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
     CudaErrchkNoCode();
     // These vectors are resized to match the size of the arrays above.
     int_times.resize(N);
