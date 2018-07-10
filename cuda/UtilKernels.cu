@@ -110,8 +110,8 @@ __global__ void forceIntersectionOrder(float *ts, Vec3<float> *coords,
 __global__ void prepRand(curandState *state, int seed)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    //curand_init(((seed >> 10) + idx), 0, 0, &state[idx]); 
-    curand_init(seed, idx, 0, &state[idx]); 
+    curand_init((seed + idx), 0, 0, &state[idx]); 
+    //curand_init(seed, idx, 0, &state[idx]); 
 }
 
 __global__ void propagate(Vec3<float> *orig, float *ray_times,
