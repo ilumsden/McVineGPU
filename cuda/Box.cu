@@ -43,8 +43,13 @@ void Box::exteriorIntersect(Vec3<float> *d_origins,
                                            d_vel,
                                            X, Y, Z,
                                            N, device_time, intersect);
-    simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 6, 2, simp_times);
-    forceIntersectionOrder<<<numBlocks, blockSize>>>(device_time, intersect, N);
+    //simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 6, 2, simp_times);
+    simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time, 
+                                                     intersect,
+                                                     N, 6, 2, 2,
+                                                     simp_times,
+                                                     intersect);
+    forceIntersectionOrder<<<numBlocks, blockSize>>>(simp_times, intersect, N);
     CudaErrchkNoCode();
     /* The data from simp_times and intersect is copied into
      * int_times and int_coords respectively.
@@ -67,6 +72,12 @@ void Box::interiorIntersect(Vec3<float> *d_origins,
                             std::vector<float> &int_times,
                             std::vector< Vec3<float> > &int_coords)
 {
+#if defined(INTERIORTEST)
+    std::vector< Vec3<float> > exit_coords;
+    std::vector<float> exit_times;
+    exit_coords.resize(2*N);
+    exit_times.resize(6*N);
+#endif
     /* The device float array "device_time" is allocated on device, and
      * its elements' values are set to -5.
      * This array will store the times calculated by the intersectBox
@@ -109,8 +120,38 @@ void Box::interiorIntersect(Vec3<float> *d_origins,
                                            d_vel,
                                            X, Y, Z,
                                            N, device_time, intersect);
-    simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 6, 1, simp_times);
-    simplifyPoints<<<numBlocks, blockSize>>>(intersect, N, 2, 1, simp_int);
+#if defined(INTERIORTEST)
+    Vec3<float> *ec = exit_coords.data();
+    float *et = exit_times.data();
+    CudaErrchk( cudaMemcpy(ec, intersect, 2*N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaMemcpy(et, device_time, 6*N*sizeof(float), cudaMemcpyDeviceToHost) );
+    std::fstream fout;
+    fout.open("interiorTest.txt", std::ios::out);
+    if (!fout.is_open())
+    {
+        std::cerr << "interiorTest.txt could not be openned.\n";
+        exit(-2);
+    }
+    fout << std::setw(8) << std::right << "Times:" << "Coords:" << "\n";
+    for (int i = 0; i < 6*N; i++)
+    {
+        if (i%6 == 0)
+        {
+            fout << "\n";
+        }
+        int ind = i/3;
+        fout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+             << exit_times[i] << " " << exit_coords[ind][i - (ind*3)] << "\n";
+    }
+    fout.close();
+#endif
+    //simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 6, 1, simp_times);
+    //simplifyPoints<<<numBlocks, blockSize>>>(intersect, N, 2, 1, simp_int);
+    simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time,
+                                                     intersect,
+                                                     N, 6, 2, 1,
+                                                     simp_times,
+                                                     simp_int);
     CudaErrchkNoCode();
     /* The data from simp_times and intersect is copied into
      * int_times and int_coords respectively.

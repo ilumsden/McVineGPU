@@ -6,8 +6,10 @@
 
 #include "Box.hpp"
 #include "Cylinder.hpp"
+#include "Error.hpp"
 #include "Pyramid.hpp"
 #include "Ray.hpp"
+#include "ScatteringKernels.hpp"
 #include "Sphere.hpp"
 #include "SystemVars.hpp"
 
@@ -38,7 +40,7 @@ class CudaDriver
         /* This function provides an easy mechanism to run through all
          * the calculations currently implemented.
          */
-        void runCalculations();//std::shared_ptr<AbstractShape> &b);
+        void runCalculations();
 
         /* This function prints the data stored for each neutron
          * based on the following member arrays: origins, vel,

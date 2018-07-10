@@ -63,15 +63,14 @@ __device__ bool solveQuadratic(float a, float b, float c,
  * the number of times per neutron in ts.
  * This function can be called from host.
  */
-__global__ void simplifyTimes(const float* ts, const int N, 
-                              const int inputGroupSize,
-                              const int outputGroupSize,
-                              float* simp);
-
-__global__ void simplifyPoints(const Vec3<float> *pts, const int N,
-                               const int inputGroupSize, 
-                               const int outputGroupSize,
-                               Vec3<float> *simp);
+__global__ void simplifyTimePointPairs(const float *times,
+                                       const Vec3<float> *coords,
+                                       const int N,
+                                       const int inputGroupTime,
+                                       const int inputGroupCoord,
+                                       const int outputGroupSize,
+                                       float *simp_times,
+                                       Vec3<float> *simp_coords);
 
 __global__ void forceIntersectionOrder(float *ts, Vec3<float> *coords,
                                        const int N);

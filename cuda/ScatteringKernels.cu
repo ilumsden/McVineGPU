@@ -52,20 +52,17 @@ __global__ void elasticScatteringKernel(const float *ray_time,
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N && ray_time[index] > 0)
     {
-        curandState local_state = state[index];
         /* The z coordinate of the unit velocity vector is chosen
          * at random and manipulated so that it falls between
          * -1 and 1.
          */
-        //float z = curand_uniform(&(state[index]));
-        float z = curand_uniform(&local_state);
+        float z = curand_uniform(&(state[index]));
         z *= 2;
         z -= 1;
         /* The spherical coordinate `phi` is randomly chosen
          * and manipulated so that it falls between 0 and 2*Pi.
          */
-        //float phi = curand_uniform(&(state[index]));
-        float phi = curand_uniform(&local_state);
+        float phi = curand_uniform(&(state[index]));
         phi *= 2*PI;
         /* Since z is based on a unit vector, theta is calculated
          * using standard Cartesian-to-Spherical coordinate conversion
@@ -83,6 +80,5 @@ __global__ void elasticScatteringKernel(const float *ray_time,
         vel[index][0] = r * cosf(phi) * sinf(theta);
         vel[index][1] = r * sinf(phi) * sinf(theta);
         vel[index][2] = r * z;
-        state[index] = local_state;
     }
 }

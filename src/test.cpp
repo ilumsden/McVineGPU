@@ -92,7 +92,7 @@ int main(int argc, char **argv)
      * The interior for loop is used to ensure the neutrons are moving
      * in the general direction of the origin.
      */
-    for (int i = 0; i < 1000000; i++)
+    for (int i = 0; i < 100000000; i++)
     {
         printf("i = %i\n", i);
         double zv = z(re);
@@ -103,15 +103,15 @@ int main(int argc, char **argv)
         std::shared_ptr<Ray> tmp = std::make_shared<Ray>(x(re), y(re), zv);
         //std::shared_ptr<Ray> tmp = std::make_shared<Ray>(norm(re), norm(re), norm(re));
         double veltmp[3];
-        for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++)
         {
-            double velo = (i == 0) ? vx(re) : ((i == 1) ? vy(re) : vz(re));//vel(re);
-            double pos = (i == 0) ? tmp->origin[0] : ((i == 1) ? tmp->origin[1] : tmp->origin[2]);
+            double velo = (j == 0) ? vx(re) : ((j == 1) ? vy(re) : vz(re));//vel(re);
+            double pos = tmp->origin[j];
             if ((pos > 0 && velo > 0) || (pos < 0 && velo < 0))
             {
                 velo *= -1;
             }
-            veltmp[i] = velo;
+            veltmp[j] = velo;
         }
         tmp->setVelocities(veltmp[0], veltmp[1], veltmp[2]);
         rays.push_back(tmp);

@@ -39,8 +39,12 @@ void Cylinder::exteriorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     intersectCylinder<<<numBlocks, blockSize>>>(d_origins, d_vel,
                                                 radius, height,
                                                 N, device_time, intersect);
-    simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 4, 2, simp_times);
-    forceIntersectionOrder<<<numBlocks, blockSize>>>(device_time, intersect, N);
+    simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time,
+                                                     intersect,
+                                                     N, 4, 2, 2,
+                                                     simp_times,
+                                                     intersect);
+    forceIntersectionOrder<<<numBlocks, blockSize>>>(simp_times, intersect, N);
     CudaErrchkNoCode();
     /* The data from simp_times and intersect is copied into
      * int_times and int_coords respectively.
@@ -103,8 +107,11 @@ void Cylinder::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     intersectCylinder<<<numBlocks, blockSize>>>(d_origins, d_vel,
                                                 radius, height,
                                                 N, device_time, intersect);
-    simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 4, 1, simp_times);
-    simplifyPoints<<<numBlocks, blockSize>>>(intersect, N, 2, 1, simp_int);
+    simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time,
+                                                     intersect,
+                                                     N, 4, 2, 1,
+                                                     simp_times,
+                                                     simp_int);
     CudaErrchkNoCode();
     /* The data from simp_times and intersect is copied into
      * int_times and int_coords respectively.

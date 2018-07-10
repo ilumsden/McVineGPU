@@ -1,6 +1,9 @@
 #ifndef ABSTRACT_SHAPE_HPP
 #define ABSTRACT_SHAPE_HPP
 
+#include <fstream>
+#include <iomanip>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>

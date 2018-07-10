@@ -37,43 +37,46 @@ __device__ bool solveQuadratic(float a, float b, float c, float &x0, float &x1)
     return true;
 }
 
-__global__ void simplifyTimes(const float *times, const int N, 
-                              const int inputGroupSize, 
-                              const int outputGroupSize,
-                              float *simp)
+__global__ void simplifyTimePointPairs(const float *times,
+                                       const Vec3<float> *coords,
+                                       const int N,
+                                       const int inputGroupTime,
+                                       const int inputGroupCoord,
+                                       const int outputGroupSize,
+                                       float *simp_times,
+                                       Vec3<float> *simp_coords) 
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    // This is done to prevent excess threads from interfering in the code.
     if (index < N)
     {
+        float tmp_times[2] = {-5, -5};
+        Vec3<float> tmp_coords[2] = {Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX),                                     Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX)};
         int count = 0;
-        for (int i = 0; i < inputGroupSize; i++)
+        for (int i = 0; i < inputGroupTime; i++)
         {
-            //if (times[inputGroupSize * index + i] != -1 && count < outputGroupSize)
-            if (times[inputGroupSize * index + i] >= 0 && count < outputGroupSize)
+            if (times[inputGroupTime*index+i] != -1 && count < 2)
             {
-                simp[outputGroupSize*index+count] = times[inputGroupSize*index+i];
+                tmp_times[count] = times[inputGroupTime*index+i];
                 count++;
             }
         }
-    }
-}
-
-__global__ void simplifyPoints(const Vec3<float> *pts, const int N, 
-                               const int inputGroupSize, 
-                               const int outputGroupSize,
-                               Vec3<float> *simp)
-{
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (index < N)
-    {
-        int count = 0;
-        for (int i = 0; i < inputGroupSize; i++)
+        count = 0;
+        for (int i = 0; i < inputGroupCoord; i++)
         {
-            if (pts[inputGroupSize*index+i] != Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX) 
-                && count < outputGroupSize)
+            if (coords[inputGroupCoord*index+i] != Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX)
+                && count < 2)
             {
-                simp[outputGroupSize*index+count] = pts[inputGroupSize*index+i];
+                tmp_coords[count] = coords[inputGroupCoord*index+i];
+                count++;
+            }
+        }
+        count = 0;
+        for (int i = 0; i < 2; i++)
+        {
+            if (tmp_times[i] >= 0 && count < outputGroupSize)
+            {
+                simp_times[outputGroupSize*index+count] = tmp_times[i];
+                simp_coords[outputGroupSize*index+count] = tmp_coords[i];
                 count++;
             }
         }

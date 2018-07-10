@@ -98,8 +98,11 @@ void Sphere::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     intersectSphere<<<numBlocks, blockSize>>>(d_origins, d_vel,
                                               radius,
                                               N, device_time, intersect);
-    simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 2, 1, simp_times);
-    simplifyPoints<<<numBlocks, blockSize>>>(intersect, N, 2, 1, simp_int); 
+    simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time,
+                                                     intersect,
+                                                     N, 2, 2, 1,
+                                                     simp_times,
+                                                     simp_int);
     CudaErrchkNoCode();
     /* The data from device_time and intersect is copied into
      * int_times and int_coords respectively.

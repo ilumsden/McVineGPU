@@ -7,11 +7,13 @@
 #include <iomanip>
 #include <fstream>
 
+#if defined(RANDTEST)
+#include <cmath>
+#endif
+
 #include <chrono>
 
 #include "CudaDriver.hpp"
-#include "ScatteringKernels.hpp"
-#include "Error.hpp"
 
 CudaDriver::CudaDriver(std::vector< std::shared_ptr<Ray> > &rays, 
                        std::shared_ptr<AbstractShape> &shape, int bS)
@@ -200,19 +202,11 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     float *scat_times;
     CudaErrchk( cudaMalloc(&scat_times, N*sizeof(float)) );
     initArray<float><<<numBlocks, blockSize>>>(scat_times, N, -5);
-    /* Allocates an array of curandStates on the device to control
-     * the random number generation.
-     */
     curandState *state;
     CudaErrchk( cudaMalloc(&state, numBlocks*blockSize*sizeof(curandState)) );
-    /* The prepRand function initializes the cuRand random number
-     * generator using the states allocated above.
-     * NOTE: The chrono-based timing is for debugging purposes.
-     *       It will be removed later.
-     */
     auto start = std::chrono::steady_clock::now();
     prepRand<<<numBlocks, blockSize>>>(state, time(NULL));
-    cudaDeviceSynchronize();
+    CudaErrchkNoCode();
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("Rand Prep Complete\n    Summary: Time = %f\n", time);
@@ -294,15 +288,14 @@ void CudaDriver::findScatteringVels()
     Vec3<float> *ta = tmp.data();
     memcpy(ta, vel, N*sizeof(Vec3<float>));
 #endif
-    /* Allocates an array of curandStates on the device to control
-     * the random number generation.
-     */
+#if defined(DEBUG) || defined(RANDTEST)
+    std::vector<float> thetas, phis;
+#endif
     curandState *state;
     CudaErrchk( cudaMalloc(&state, numBlocks*blockSize*sizeof(curandState)) );
     auto start = std::chrono::steady_clock::now();
     prepRand<<<numBlocks, blockSize>>>(state, time(NULL));
     CudaErrchkNoCode();
-    CudaErrchk( cudaDeviceSynchronize() );
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("Rand Prep Complete\n    Summary: Time = %f\n", time);
@@ -335,6 +328,37 @@ void CudaDriver::findScatteringVels()
              << vel[i][0] << " " << vel[i][1] << " " << vel[i][2] << "\n";
     }
     fout.close();
+#endif
+#if defined(DEBUG) || defined(RANDTEST)
+    for (int i = 0; i < N; i++)
+    {
+        thetas.push_back(acos(vel[i][2] / vel[i].length()));
+        phis.push_back(atan2(vel[i][1], vel[i][0]));
+    }
+    std::sort(thetas.begin(), thetas.end());
+    std::sort(phis.begin(), phis.end());
+    std::fstream f1, f2;
+    f1.open("thetas.txt", std::ios::out);
+    if (!f1.is_open())
+    {
+        std::cerr << "thetas.txt could not be openned.\n";
+        exit(-2);
+    }
+    f2.open("phis.txt", std::ios::out);
+    if (!f2.is_open())
+    {
+        std::cerr << "phis.txt could not be openned.\n";
+        exit(-2);
+    }
+    f1 << "Theta Values (Radians): Should range from 0 to Pi\n";
+    f2 << "Phi Values (Radians): Should range from 0 to 2*Pi\n";
+    for (int i = 0; i < (int)(thetas.size()); i++)
+    {
+        f1 << thetas[i] << "\n";
+        f2 << phis[i] << "\n";
+    }
+    f1.close();
+    f2.close();
 #endif
     CudaErrchk( cudaFree(state) );
 }
@@ -400,7 +424,7 @@ void CudaDriver::handleInteriorIntersect()
     CudaErrchk( cudaFree(exit_coords) );
 }
 
-void CudaDriver::runCalculations()//std::shared_ptr<AbstractShape> &b)
+void CudaDriver::runCalculations()
 {
     /* Creates the vectors that will store the intersection
      * times and coordinates.
@@ -409,7 +433,7 @@ void CudaDriver::runCalculations()//std::shared_ptr<AbstractShape> &b)
     std::vector< Vec3<float> > int_coords;
     // Starts the intersection calculation
     auto start = std::chrono::steady_clock::now();
-    handleExteriorIntersect(int_times, int_coords);//b, int_times, int_coords);
+    handleExteriorIntersect(int_times, int_coords);
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("handleExteriorIntersect: %f\n", time);
