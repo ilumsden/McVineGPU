@@ -83,6 +83,14 @@ struct Ray
         update(p);
     }
 
+    // This function updates all the ray's data using the Vec3 class.
+    void update(Vec3<float> &orig, Vec3<float> &v, float time, float p)
+    {
+        update(orig[0], orig[1], orig[2], time);
+        update(v[0], v[1], v[2]);
+        update(p);
+    }
+
     // This data stores the neutron's position and velocity.
     Vec3<float> origin, vel;
 

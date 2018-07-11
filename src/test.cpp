@@ -128,6 +128,14 @@ int main(int argc, char **argv)
     printf("CudaDriver Constructor: %f\n", consTime);
     //cd.runCalculations(b);
     cd.runCalculations();
+    std::fstream fout;
+    fout.open("finalData.txt", std::ios::out);
+    if (!fout.is_open())
+    {
+        fprintf(stderr, "finalData.txt could not be openned.\n");
+        return -2;
+    }
+    fout << cd;
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("Total Time = %f s\n", time);

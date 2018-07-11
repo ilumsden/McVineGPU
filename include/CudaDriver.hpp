@@ -46,7 +46,15 @@ class CudaDriver
          * based on the following member arrays: origins, vel,
          * times, and probs. 
          */
-        void printData(const std::string &fname=std::string());    
+        void printFullData(const std::string &fname=std::string());    
+
+        /* Copies the data stored in the class's host side arrays
+         * back into the initial vector of Rays that was used to obtain
+         * the initial data.
+         */
+        void updateRays();
+
+        friend std::ostream& operator<<(std::ostream &fout, const CudaDriver &cd);
 
     private:
 

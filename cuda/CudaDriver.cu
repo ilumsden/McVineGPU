@@ -5,6 +5,7 @@
 #include <ctime>
 #include <iostream>
 #include <iomanip>
+#include <limits>
 #include <fstream>
 
 #if defined(RANDTEST)
@@ -67,7 +68,7 @@ CudaDriver::~CudaDriver()
     CudaErrchk( cudaFree(d_probs) );
 }
 
-void CudaDriver::printData(const std::string &fname)
+void CudaDriver::printFullData(const std::string &fname)
 {
     /* If there is a file name provided (i.e. fname != str::string()),
      * the C++ stdout stream (cout) is redirected to print to the
@@ -116,6 +117,14 @@ void CudaDriver::printData(const std::string &fname)
     if (fname != std::string())
     {
         fout.close();
+    }
+}
+
+void CudaDriver::updateRays()
+{
+    for (int i = 0; i < N; i++)
+    {
+        (*rayptr)[i]->update(origins[i], vel[i], times[i], probs[i]);
     }
 }
 
@@ -454,4 +463,15 @@ void CudaDriver::runCalculations()
     stop = std::chrono::steady_clock::now();
     time = std::chrono::duration<double>(stop - start).count();
     printf("handleInteriorIntersect: %f\n", time);
+}
+
+std::ostream& operator<<(std::ostream &fout, const CudaDriver &cd)
+{
+    for (int i = 0; i < cd.N; i++)
+    {
+        fout << std::setprecision(std::numeric_limits<float>::digits10 + 1)
+             << cd.vel[i][0] << " " << cd.vel[i][1] << " "
+             << cd.vel[i][2] << " " << cd.probs[i] << "\n";
+    }
+    return fout;
 }
