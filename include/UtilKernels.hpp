@@ -6,10 +6,23 @@
  * files later.
  */
 
+#include <cfloat>
 #include <curand.h>
 #include <curand_kernel.h>
 
+#include "SystemVars.hpp"
 #include "Vec3.hpp"
+
+/* A macro definition for Pi.
+ * This is done so that the CUDA kernels can easily have access
+ * to the value of Pi without passing it as a paramter (CUDA does
+ * not have its own definition of Pi).
+ * The precision used was copied straight from McVine (although
+ * forcing it to be a float was not).
+ */
+#ifndef PI
+#define PI 3.14159265358979323846f
+#endif
 
 /* This function initializes the contents of the data array with the
  * value val.
@@ -50,13 +63,39 @@ __device__ bool solveQuadratic(float a, float b, float c,
  * the number of times per neutron in ts.
  * This function can be called from host.
  */
-__global__ void simplifyTimes(const float* ts, const int N, 
-                              const int groupSize, float* simp);
+__global__ void simplifyTimePointPairs(const float *times,
+                                       const Vec3<float> *coords,
+                                       const int N,
+                                       const int inputGroupTime,
+                                       const int inputGroupCoord,
+                                       const int outputGroupSize,
+                                       float *simp_times,
+                                       Vec3<float> *simp_coords);
+
+__global__ void forceIntersectionOrder(float *ts, Vec3<float> *coords,
+                                       const int N);
 
 /* This function seeds and initializes a cuRand random number generator
  * using the cuRand States stored in state and the seed value "seed."
  * This function can be called from host.
  */
 __global__ void prepRand(curandState *state, int seed);
+
+/* This function updates the neutrons' position and time data
+ * using the contents of the `scat_pos` and `scat_times` arrays.
+ */
+__global__ void propagate(Vec3<float> *orig, float *ray_times,
+                          Vec3<float> *scat_pos, float *scat_times,
+                          const int N);
+
+/* This function updates the neutrons' probability data using the
+ * neutrons' scattering positions, the coordinates of their entry into
+ * the material, and the material's attenuation.
+ */
+__global__ void updateProbability(float *ray_prob,
+                                  Vec3<float> *p1, Vec3<float> *p0,
+                                  const int p1GroupSize,
+                                  const int p0GroupSize,
+                                  const float atten, const int N);
 
 #endif
