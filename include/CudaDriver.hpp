@@ -54,13 +54,14 @@ class CudaDriver
          */
         void updateRays();
 
+        //void printToH5(const std::string &fname, const bool endianness=false);
+
         friend std::ostream& operator<<(std::ostream &fout, const CudaDriver &cd);
 
     private:
 
         // This function is used to initiate the intersection calculation.
-        void handleExteriorIntersect(//std::shared_ptr<AbstractShape> &b, 
-                                     std::vector<float> &host_time, 
+        void handleExteriorIntersect(std::vector<float> &host_time, 
                                      std::vector< Vec3<float> > &int_coords);
 
         // This function is used to initiate the scattering site calculation.

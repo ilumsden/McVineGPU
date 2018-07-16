@@ -13,7 +13,7 @@ __device__ void randCoord(Vec3<float> &orig, Vec3<float> &vel,
                           float *int_times,
                           Vec3<float> &pos,
                           float &scat_time,
-                          curandState *state);
+                          float rand);
 
 /* This function uses the intersection points (int_pts)
  * and times (ts) calculated by the intersect functions to choose 
@@ -27,7 +27,7 @@ __device__ void randCoord(Vec3<float> &orig, Vec3<float> &vel,
 __global__ void calcScatteringSites(float *ts, 
                                     Vec3<float> *orig, Vec3<float> *vel,
                                     Vec3<float> *pos, float *scat_times,
-                                    curandState *state, const int N);
+                                    float *rands, const int N);
 
 /* This function randomly, but uniformly generates the post-elastic
  * scattering velocity vector and stores the new velocity in the
@@ -35,7 +35,7 @@ __global__ void calcScatteringSites(float *ts,
  */
 __global__ void elasticScatteringKernel(const float *ray_time,
                                         Vec3<float> *vel,
-                                        curandState *state,
+                                        float *rands,
                                         const int N);
 
 #endif

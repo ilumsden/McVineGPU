@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
-project(McVineGPU LANGUAGES CXX CUDA)
+project(McVineGPU LANGUAGES C CXX CUDA)
 
 option(BUILD_TESTING "Build tests." OFF)
 
@@ -17,6 +17,13 @@ message(STATUS "CUDA include directories are ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECT
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+
+#find_package(HDF5 COMPONENTS C HL NO_MODULE REQUIRED shared)
+#find_package(HDF5 COMPONENTS C HL NO_MODULE REQUIRED static)
+#if(HDF5_FOUND)
+#    include_directories(${HDF5_INCLUDE_DIR})
+#    set(_hdf5_libs hdf5 hdf5_cpp)
+#endif()
 
 list(APPEND CMAKE_CUDA_FLAGS "-cudart static")
 
@@ -57,22 +64,24 @@ if(INTERIORTEST)
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -DINTERIORTEST")
 endif()
 
-add_library(cuMcVineLib STATIC ${gpu_source_files} ${gpu_headers})
+add_library(cuMcVine STATIC ${gpu_source_files} ${gpu_headers})
 
-target_compile_features(cuMcVineLib PUBLIC cxx_std_11)
-set_target_properties(cuMcVineLib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-target_link_libraries(cuMcVineLib curand)
+target_compile_features(cuMcVine PUBLIC cxx_std_11)
+set_target_properties(cuMcVine PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+target_link_libraries(cuMcVine curand)
+#target_link_libraries(cuMcVine curand ${_hdf5_libs})
 
 add_executable(${PROJECT_NAME} ${cpu_source_files})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_11)
-target_link_libraries(${PROJECT_NAME} PRIVATE cuMcVineLib)
+target_link_libraries(${PROJECT_NAME} PRIVATE cuMcVine)
+#target_link_libraries(${PROJECT_NAME} PRIVATE cuMcVine ${_hdf5_libs})
 
 if(BUILD_TESTING)
     message(STATUS "Building test suite.")
-    add_library(testMcVineLib ${test_cuda_src} ${test_cuda_headers})
-    set_target_properties(testMcVineLib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-    target_compile_features(testMcVineLib PUBLIC cxx_std_11)
-    target_link_libraries(testMcVineLib cuMcVineLib)
+    add_library(testMcVine ${test_cuda_src} ${test_cuda_headers})
+    set_target_properties(testMcVine PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    target_compile_features(testMcVine PUBLIC cxx_std_11)
+    target_link_libraries(testMcVine cuMcVine)
 
     add_executable(Test_${PROJECT_NAME} ${test_drivers})
     target_compile_features(Test_${PROJECT_NAME} PUBLIC cxx_std_11)

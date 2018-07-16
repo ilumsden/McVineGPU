@@ -4,17 +4,15 @@ __device__ void randCoord(Vec3<float> &orig, Vec3<float> &vel,
                           float *time,
                           Vec3<float> &pos,
                           float &scat_time,
-                          curandState *state)
+                          float rand)
 {
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
     /* Instead of pasing the initial ray data, the two intersection
      * points and times are used to recalculate the velocities.
      */
     float dt = time[1] - time[0];
     // cuRand is used to generate a random time between 0 and dt.
-    float randt = curand_uniform(&(state[index]));
-    randt *= dt;
-    scat_time = randt + time[0];
+    rand *= dt;
+    scat_time = rand + time[0];
     /* Basic kinematics are used to calculate the coordinates of
      * the randomly chosen scattering site.
      */
@@ -24,7 +22,7 @@ __device__ void randCoord(Vec3<float> &orig, Vec3<float> &vel,
 __global__ void calcScatteringSites(float *ts, 
                                     Vec3<float> *orig, Vec3<float> *vel,
                                     Vec3<float> *pos, float *scat_times,
-                                    curandState *state, const int N)
+                                    float *rands, const int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     // This is done to prevent excess threads from interfering in the code.
@@ -39,14 +37,14 @@ __global__ void calcScatteringSites(float *ts,
             /* The randCoord function is called to determine the
              * scattering site.
              */
-            randCoord(orig[index], vel[index], &(ts[2*index]), pos[index], scat_times[index], state);
+            randCoord(orig[index], vel[index], &(ts[2*index]), pos[index], scat_times[index], rands[index]);
         }
     }
 }
 
 __global__ void elasticScatteringKernel(const float *ray_time,
                                         Vec3<float> *vel,
-                                        curandState *state,
+                                        float *rands,
                                         const int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -56,13 +54,13 @@ __global__ void elasticScatteringKernel(const float *ray_time,
          * at random and manipulated so that it falls between
          * -1 and 1.
          */
-        float z = curand_uniform(&(state[index]));
+        float z = rands[2*index];
         z *= 2;
         z -= 1;
         /* The spherical coordinate `phi` is randomly chosen
          * and manipulated so that it falls between 0 and 2*Pi.
          */
-        float phi = curand_uniform(&(state[index]));
+        float phi = rands[2*index+1];
         phi *= 2*PI;
         /* Since z is based on a unit vector, theta is calculated
          * using standard Cartesian-to-Spherical coordinate conversion

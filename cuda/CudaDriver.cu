@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <limits>
 #include <fstream>
+#include "H5Cpp.h"
 
 #if defined(RANDTEST)
 #include <cmath>
@@ -128,8 +129,58 @@ void CudaDriver::updateRays()
     }
 }
 
-void CudaDriver::handleExteriorIntersect(//std::shared_ptr<AbstractShape> &b, 
-                                         std::vector<float> &host_time,
+/*void CudaDriver::printToH5(const std::string &fname, const bool endianness)
+{
+    using namespace H5;
+    if (fname.substr(fname.rfind(".")) != ".h5")
+    {
+        fprintf(stderr, "%s is not a supported HDF5 file name.\n", fname.c_str());
+        return;
+    }
+    float data[N][4];
+    for (int i = 0; i < N; i++)
+    {
+        data[i][0] = vel[i][0];
+        data[i][1] = vel[i][1];
+        data[i][2] = vel[i][2];
+        data[i][3] = probs[i];
+    }
+    try
+    {
+        PredType datatype = PredType::IEEE_F32LE;
+        if (endianness)
+        {
+            datatype = PredType::IEEE_F32BE;
+        }
+        Exception::dontPrint();
+        H5File file(fname, H5F_ACC_TRUNC);
+        hsize_t dims[2] = {N, 4};
+        DataSpace dspace(2, dims);
+        DataSet dset = file.createDataSet("VecProbData", datatype, dspace); 
+        dset.write(data, datatype);
+    }
+    catch(FileIException error)
+    {
+        error.printErrorStack();
+        //H5Eprint(stderr);
+        exit(-3);
+    }
+    catch(DataSetIException error)
+    {
+        error.printErrorStack();
+        //H5Eprint(stderr);
+        exit(-3);
+    }
+    catch(DataSpaceIException error)
+    {
+        error.printErrorStack();
+        //H5Eprint(stderr);
+        exit(-3);
+    }
+    return;
+}*/
+
+void CudaDriver::handleExteriorIntersect(std::vector<float> &host_time,
                                          std::vector< Vec3<float> > &int_coords)
 {
     /* Calls the shape's intersect function.
@@ -211,16 +262,18 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     float *scat_times;
     CudaErrchk( cudaMalloc(&scat_times, N*sizeof(float)) );
     initArray<float><<<numBlocks, blockSize>>>(scat_times, N, -5);
-    curandState *state;
-    CudaErrchk( cudaMalloc(&state, numBlocks*blockSize*sizeof(curandState)) );
     auto start = std::chrono::steady_clock::now();
-    prepRand<<<numBlocks, blockSize>>>(state, time(NULL));
-    CudaErrchkNoCode();
+    curandGenerator_t gen;
+    float *d_randnums;
+    CudaErrchk( cudaMalloc(&d_randnums, N*sizeof(float)) );
+    CuRandErrchk( curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT) );
+    CuRandErrchk( curandSetPseudoRandomGeneratorSeed(gen, time(NULL)) );
+    CuRandErrchk( curandGenerateUniform(gen, d_randnums, N) );
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
-    printf("Rand Prep Complete\n    Summary: Time = %f\n", time);
+    printf("    RNG Time = %f\n", time);
     // Calls the kernel for determining the scattering sites for the neutrons
-    calcScatteringSites<<<numBlocks, blockSize>>>(ts, d_origins, d_vel, pos, scat_times, state, N);
+    calcScatteringSites<<<numBlocks, blockSize>>>(ts, d_origins, d_vel, pos, scat_times, d_randnums, N);
     /* Propagates the neutrons to their scattering sites.
      * In other words, the scattering coordinates and times are copied
      * into the device arrays that store the neutrons' origins and times
@@ -281,11 +334,12 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     }
     fout.close();
 #endif
+    CuRandErrchk( curandDestroyGenerator(gen) );
     // Frees the device memory allocated above.
     CudaErrchk( cudaFree(ts) );
     CudaErrchk( cudaFree(ic) );
     CudaErrchk( cudaFree(pos) );
-    CudaErrchk( cudaFree(state) );
+    CudaErrchk( cudaFree(d_randnums) );
     return;
 }
 
@@ -300,20 +354,22 @@ void CudaDriver::findScatteringVels()
 #if defined(DEBUG) || defined(RANDTEST)
     std::vector<float> thetas, phis;
 #endif
-    curandState *state;
-    CudaErrchk( cudaMalloc(&state, numBlocks*blockSize*sizeof(curandState)) );
     auto start = std::chrono::steady_clock::now();
-    prepRand<<<numBlocks, blockSize>>>(state, time(NULL));
-    CudaErrchkNoCode();
+    curandGenerator_t gen;
+    float *d_randnums;
+    CudaErrchk( cudaMalloc(&d_randnums, 2*N*sizeof(float)) );
+    CuRandErrchk( curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT) );
+    CuRandErrchk( curandSetPseudoRandomGeneratorSeed(gen, time(NULL)) );
+    CuRandErrchk( curandGenerateUniform(gen, d_randnums, 2*N) );
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
-    printf("Rand Prep Complete\n    Summary: Time = %f\n", time);
+    printf("    RNG Time = %f\n", time);
     /* Calls the elasticScatteringKernel function to update the neutron
      * velocities post-elastic scattering.
      */
     elasticScatteringKernel<<<numBlocks, blockSize>>>(d_times,
                                                       d_vel,
-                                                      state, N);
+                                                      d_randnums, N);
     CudaErrchkNoCode();
     /* Copies the new neutron velocities into the host-side neutron
      * velocity array.
@@ -369,7 +425,8 @@ void CudaDriver::findScatteringVels()
     f1.close();
     f2.close();
 #endif
-    CudaErrchk( cudaFree(state) );
+    CuRandErrchk( curandDestroyGenerator(gen) );
+    CudaErrchk( cudaFree(d_randnums) );
 }
 
 void CudaDriver::handleInteriorIntersect()
@@ -467,11 +524,15 @@ void CudaDriver::runCalculations()
 
 std::ostream& operator<<(std::ostream &fout, const CudaDriver &cd)
 {
+    std::vector<float> data;
     for (int i = 0; i < cd.N; i++)
     {
-        fout << std::setprecision(std::numeric_limits<float>::digits10 + 1)
-             << cd.vel[i][0] << " " << cd.vel[i][1] << " "
-             << cd.vel[i][2] << " " << cd.probs[i] << "\n";
+        data.push_back(cd.vel[i][0]);
+        data.push_back(cd.vel[i][1]);
+        data.push_back(cd.vel[i][2]);
+        data.push_back(cd.probs[i]);
     }
+    char *bytes = (char*)(data.data());
+    fout.write(bytes, ((int)(data.size()))*sizeof(float));
     return fout;
 }
