@@ -29,12 +29,23 @@ struct Cylinder : public AbstractShape
 
     /* The function that handles the calculation of the intersection
      * points and times between the Cylinder object and the neutrons
-     * represented by d_origins and d_vel.
+     * represented by d_origins and d_vel when the neutrons start
+     * outside the Cylinder.
      */
-    virtual void intersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
-                           const int N, const int blockSize, const int numBlocks,
-                           std::vector<float> &int_times, 
-                           std::vector< Vec3<float> > &int_coords) override;
+    virtual void exteriorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
+                                   const int N, const int blockSize, const int numBlocks,
+                                   std::vector<float> &int_times, 
+                                   std::vector< Vec3<float> > &int_coords) override;
+
+    /* The function that handles the calculation of the intersection
+     * points and times between the Cylinder object and the neutrons
+     * represented by d_origins and d_vel when the neutrons start
+     * inside the Cylinder.
+     */
+    virtual void interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
+                                   const int N, const int blockSize, const int numBlocks,
+                                   std::vector<float> &int_times, 
+                                   std::vector< Vec3<float> > &int_coords) override;
 
     // These members store the Cylinder's radius and height.
     double radius, height;

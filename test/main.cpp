@@ -7,10 +7,12 @@
 #include <cuda_runtime.h>
 
 #include "tests.hpp"
+#include "SystemVars.hpp"
 
 using namespace std;
 
 const int num_keys = 2;
+float atten;
 
 int main(int argc, char **argv)
 {
@@ -55,6 +57,7 @@ int main(int argc, char **argv)
     sort(ids.begin(), ids.end());
     vector<int>::iterator it = unique(ids.begin(), ids.end());
     ids.resize(distance(ids.begin(), it));
+    atten = 0.01;
     for (int i : ids)
     {
         switch (i)

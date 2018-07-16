@@ -9,9 +9,11 @@
  * thread that this function is called from.
  * This function can be called on device only.
  */
-__device__ void randCoord(Vec3<float> *inters, float *time,
+__device__ void randCoord(Vec3<float> &orig, Vec3<float> &vel,
+                          float *int_times,
                           Vec3<float> &pos,
-                          curandState *state);
+                          float &scat_time,
+                          float rand);
 
 /* This function uses the intersection points (int_pts)
  * and times (ts) calculated by the intersect functions to choose 
@@ -22,8 +24,18 @@ __device__ void randCoord(Vec3<float> *inters, float *time,
  * scattering points.
  * This function can be called from host.
  */
-__global__ void calcScatteringSites(float *ts, Vec3<float> *int_pts,
-                                    Vec3<float> *pos, curandState *state,
-                                    const int N);
+__global__ void calcScatteringSites(float *ts, 
+                                    Vec3<float> *orig, Vec3<float> *vel,
+                                    Vec3<float> *pos, float *scat_times,
+                                    float *rands, const int N);
+
+/* This function randomly, but uniformly generates the post-elastic
+ * scattering velocity vector and stores the new velocity in the
+ * neutron state velocity array.
+ */
+__global__ void elasticScatteringKernel(const float *ray_time,
+                                        Vec3<float> *vel,
+                                        float *rands,
+                                        const int N);
 
 #endif

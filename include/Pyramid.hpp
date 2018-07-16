@@ -26,12 +26,21 @@ struct Pyramid : public AbstractShape
 
     /* The function that handles the calculation of the intersection points
      * and times between the Pyramid object and the neutrons represented
-     * by d_origins and d_vel.
+     * by d_origins and d_vel when the neutrons start outside the Pyramid.
      */
-    virtual void intersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
-                           const int N, const int blockSize, const int numBlocks,
-                           std::vector<float> &int_times, 
-                           std::vector< Vec3<float> > &int_coords) override;
+    virtual void exteriorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
+                                   const int N, const int blockSize, const int numBlocks,
+                                   std::vector<float> &int_times, 
+                                   std::vector< Vec3<float> > &int_coords) override;
+
+    /* The function that handles the calculation of the intersection points
+     * and times between the Pyramid object and the neutrons represented
+     * by d_origins and d_vel when the neutrons start inside the Pyramid.
+     */
+    virtual void interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
+                                   const int N, const int blockSize, const int numBlocks,
+                                   std::vector<float> &int_times, 
+                                   std::vector< Vec3<float> > &int_coords) override;
 
     /* These members store the Pyramid's base dimensions (in X and Y
      * components) and height.

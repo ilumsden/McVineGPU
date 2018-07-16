@@ -1,6 +1,6 @@
-# McVineGPU_Test
+# McVineGPU
 
-This repo is a personal repo for performing proof-of-concept tests for ideas related to integrating GPU acceleration through CUDA to [McVine](https://github.com/mcvine/mcvine).
+This repo is for developing integration of GPU acceleration through CUDA for [McVine](https://github.com/mcvine/mcvine).
 
 ## Dependencies:
 
