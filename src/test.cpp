@@ -57,8 +57,8 @@ int main(int argc, char **argv)
             }
             else
             {
-                printf("Invalid Flag: %s\n\n", flag.c_str());
-                printf("./McVineGPUTest [flags]\n\nFlags:\n    -h|--help: Prints help info\n    --blockSize=#: Flag for specifying the CUDA block size. Replace # with an integer multiple of 32.\n    --atten=#: Flag for specifying the attenuation of the system. Replace # with the desired attenuation in meters.\n    --fname=_: Flag for specifying the file name for the final output file. Replace the _ with the desired file name.\n");
+                fprintf(stderr, "Invalid Flag: %s\n\n", flag.c_str());
+                fprintf(stderr, "./McVineGPUTest [flags]\n\nFlags:\n    -h|--help: Prints help info\n    --blockSize=#: Flag for specifying the CUDA block size. Replace # with an integer multiple of 32.\n    --atten=#: Flag for specifying the attenuation of the system. Replace # with the desired attenuation in meters.\n    --fname=_: Flag for specifying the file name for the final output file. Replace the _ with the desired file name.\n");
                 return -1;
             }
         } 
@@ -66,7 +66,6 @@ int main(int argc, char **argv)
         blockSize = std::stoi(sizeFlag.substr(12));
     }
     // All calls to std::chrono are used for program timing.
-    auto start = std::chrono::steady_clock::now();
     /* These lines create the AbstractShape pointer used for testing
      * each primative.
      */
@@ -79,26 +78,18 @@ int main(int argc, char **argv)
     double x = -0.5; double y = 0; double z = 0;
     double vx = 1; double vy = 0; double vz = 0;
     // Debugging print to stdout.
-    printf("Starting data creation\n");
-    auto createStart = std::chrono::steady_clock::now();
     /* This for loop randomly generates the initial ray data.
      * The interior for loop is used to ensure the neutrons are moving
      * in the general direction of the origin.
      */
-    for (int i = 0; i < 100000000; i++)
+    for (int i = 0; i < 1000000; i++)
     {
         printf("i = %i\n", i);
         rays.push_back(std::make_shared<Ray>(x, y, z, vx, vy, vz));
     }
-    auto createStop = std::chrono::steady_clock::now();
-    double createTime = std::chrono::duration<double>(createStop - createStart).count();
-    printf("Data Creation: %f\n", createTime);
+    auto start = std::chrono::steady_clock::now();
     // A CudaDriver object is created and used to run tests.
-    auto consStart = std::chrono::steady_clock::now();
     CudaDriver cd(rays, b, blockSize);
-    auto consStop = std::chrono::steady_clock::now();
-    double consTime = std::chrono::duration<double>(consStop - consStart).count();
-    printf("CudaDriver Constructor: %f\n", consTime);
     cd.runCalculations();
     std::fstream fout;
     fout.open(fname, std::ios::out | std::ios::trunc | std::ios::binary);
@@ -108,7 +99,6 @@ int main(int argc, char **argv)
         return -2;
     }
     fout << cd;
-    //cd.printToH5(fname);
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("Total Time = %f s\n", time);

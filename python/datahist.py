@@ -1,7 +1,7 @@
 from __future__ import print_function, division, unicode_literals
 
 import ast
-from math import ceil
+from math import ceil, sqrt
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -37,6 +37,7 @@ def plotHistogram(hist, binEdges):
     plt.xlabel("Scattering Angle ({})".format(chr(176)))
     plt.ylabel("Normalized Intensity")
     plt.title("Normalized Intensity vs Scattering Angle")
+    plt.grid()
     plt.show()
 
 if __name__ == "__main__":

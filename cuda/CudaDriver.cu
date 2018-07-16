@@ -25,7 +25,6 @@ CudaDriver::CudaDriver(std::vector< std::shared_ptr<Ray> > &rays,
     // Calculates the CUDA launch parameters using bS
     blockSize = bS;
     numBlocks = (N + blockSize - 1) / blockSize;
-    printf("blockSize = %i\nnumBlocks = %i\n", blockSize, numBlocks);
     /* Allocates both host and device memory for the float arrays that
      * will be used to store the data passed to the CUDA functions.
      */
@@ -262,16 +261,12 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     float *scat_times;
     CudaErrchk( cudaMalloc(&scat_times, N*sizeof(float)) );
     initArray<float><<<numBlocks, blockSize>>>(scat_times, N, -5);
-    auto start = std::chrono::steady_clock::now();
     curandGenerator_t gen;
     float *d_randnums;
     CudaErrchk( cudaMalloc(&d_randnums, N*sizeof(float)) );
     CuRandErrchk( curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT) );
     CuRandErrchk( curandSetPseudoRandomGeneratorSeed(gen, time(NULL)) );
     CuRandErrchk( curandGenerateUniform(gen, d_randnums, N) );
-    auto stop = std::chrono::steady_clock::now();
-    double time = std::chrono::duration<double>(stop - start).count();
-    printf("    RNG Time = %f\n", time);
     // Calls the kernel for determining the scattering sites for the neutrons
     calcScatteringSites<<<numBlocks, blockSize>>>(ts, d_origins, d_vel, pos, scat_times, d_randnums, N);
     /* Propagates the neutrons to their scattering sites.
@@ -354,16 +349,12 @@ void CudaDriver::findScatteringVels()
 #if defined(DEBUG) || defined(RANDTEST)
     std::vector<float> thetas, phis;
 #endif
-    auto start = std::chrono::steady_clock::now();
     curandGenerator_t gen;
     float *d_randnums;
     CudaErrchk( cudaMalloc(&d_randnums, 2*N*sizeof(float)) );
     CuRandErrchk( curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT) );
     CuRandErrchk( curandSetPseudoRandomGeneratorSeed(gen, time(NULL)) );
     CuRandErrchk( curandGenerateUniform(gen, d_randnums, 2*N) );
-    auto stop = std::chrono::steady_clock::now();
-    double time = std::chrono::duration<double>(stop - start).count();
-    printf("    RNG Time = %f\n", time);
     /* Calls the elasticScatteringKernel function to update the neutron
      * velocities post-elastic scattering.
      */
@@ -498,28 +489,12 @@ void CudaDriver::runCalculations()
     std::vector<float> int_times;
     std::vector< Vec3<float> > int_coords;
     // Starts the intersection calculation
-    auto start = std::chrono::steady_clock::now();
     handleExteriorIntersect(int_times, int_coords);
-    auto stop = std::chrono::steady_clock::now();
-    double time = std::chrono::duration<double>(stop - start).count();
-    printf("handleExteriorIntersect: %f\n", time);
     // Starts the scattering site calculation
-    start = std::chrono::steady_clock::now();
     findScatteringSites(int_times, int_coords);
-    stop = std::chrono::steady_clock::now();
-    time = std::chrono::duration<double>(stop - start).count();
-    printf("findScatteringSites: %f\n", time);
     // Starts the elastic scattering calculation
-    start = std::chrono::steady_clock::now();
     findScatteringVels();
-    stop = std::chrono::steady_clock::now();
-    time = std::chrono::duration<double>(stop - start).count();
-    printf("findScatteringVels: %f\n", time);
-    start = std::chrono::steady_clock::now();
     handleInteriorIntersect();
-    stop = std::chrono::steady_clock::now();
-    time = std::chrono::duration<double>(stop - start).count();
-    printf("handleInteriorIntersect: %f\n", time);
 }
 
 std::ostream& operator<<(std::ostream &fout, const CudaDriver &cd)
