@@ -82,7 +82,7 @@ int main(int argc, char **argv)
      * The interior for loop is used to ensure the neutrons are moving
      * in the general direction of the origin.
      */
-    for (int i = 0; i < 1000000; i++)
+    for (int i = 0; i < 100000000; i++)
     {
         printf("i = %i\n", i);
         rays.push_back(std::make_shared<Ray>(x, y, z, vx, vy, vz));
@@ -91,14 +91,14 @@ int main(int argc, char **argv)
     // A CudaDriver object is created and used to run tests.
     CudaDriver cd(rays, b, blockSize);
     cd.runCalculations();
-    std::fstream fout;
+    /*std::fstream fout;
     fout.open(fname, std::ios::out | std::ios::trunc | std::ios::binary);
     if (!fout.is_open())
     {
         fprintf(stderr, "%s could not be openned.\n", fname.c_str());
         return -2;
     }
-    fout << cd;
+    fout << cd;*/
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("Total Time = %f s\n", time);
