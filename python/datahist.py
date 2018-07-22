@@ -30,7 +30,7 @@ def generateHistogram(fname, v):
 
 def plotHistogram(hist, binEdges):
     center = (binEdges[:-1] + binEdges[1:])/2
-    plt.plot(center, hist)
+    plt.plot(center[10:-10], hist[10:-10])
     ymax = np.amax(hist) + 1000
     plt.ylim(0, ymax)
     plt.xlim(0, 180)
