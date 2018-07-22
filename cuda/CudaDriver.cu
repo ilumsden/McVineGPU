@@ -25,6 +25,7 @@ CudaDriver::CudaDriver(std::vector< std::shared_ptr<Ray> > &rays,
     // Calculates the CUDA launch parameters using bS
     blockSize = bS;
     numBlocks = (N + blockSize - 1) / blockSize;
+    printf("CUDA Launch Params: %i, %i\n", numBlocks, blockSize);
     /* Allocates both host and device memory for the float arrays that
      * will be used to store the data passed to the CUDA functions.
      */
