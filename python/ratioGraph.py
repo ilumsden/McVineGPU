@@ -10,10 +10,12 @@ gpuspeed = x / gputimes
 
 ratio = gpuspeed / cpuspeed
 
-plt.plot(x, ratio, ".-", color="#74B71B")
-plt.title("Ratio of McVineGPU's Speed to MCViNE's Speed vs Number of Neutrons")
-plt.xlabel("Number of Neutrons")
-plt.ylabel("Ratio of McVineGPU's Speed to MCViNE's Speed")
+plt.plot(x, ratio, ".-", color="#000000", linewidth=2.5, markersize=7.5)
+plt.title("Ratio of McVineGPU's Speed to MCViNE's Speed\nvs Number of Neutrons", fontsize=24)
+plt.xlabel("Number of Neutrons", fontsize=22)
+plt.ylabel("Ratio of McVineGPU's Speed\nto MCViNE's Speed", fontsize=22)
+plt.xticks(fontsize=18)
+plt.yticks(fontsize=18)
 
 plt.xscale("log")
 
