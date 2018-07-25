@@ -15,9 +15,7 @@
 #include "Ray.hpp"
 #include "SystemVars.hpp"
 
-typedef std::pair<intersectStart_t, int> devicePair;
-
-extern std::unordered_map<std::string, devicePair> funcPtrDict;
+extern std::unordered_map<std::string, int> interKeyDict;
 
 /* Abstract Shape is the parent interface for the primitive
  * solids defined in McVine.
@@ -26,29 +24,7 @@ extern std::unordered_map<std::string, devicePair> funcPtrDict;
  */
 struct AbstractShape
 {
-    AbstractShape() 
-    { 
-        type = "Shape"; 
-        if (funcPtrDict.empty())
-        {
-            funcPtrDict.insert(
-                std::make_pair<std::string, devicePair>("Box", 
-                std::make_pair<intersectStart_t, int>(NULL, 6)));
-            funcPtrDict.insert(
-                std::make_pair<std::string, devicePair>("Cylinder", 
-                std::make_pair<intersectStart_t, int>(NULL, 4)));
-            funcPtrDict.insert(
-                std::make_pair<std::string, devicePair>("Pyramid", 
-                std::make_pair<intersectStart_t, int>(NULL, 5)));
-            funcPtrDict.insert(
-                std::make_pair<std::string, devicePair>("Sphere", 
-                std::make_pair<intersectStart_t, int>(NULL, 2)));
-            CudaErrchk( cudaMemcpyFromSymbol(&(std::get<0>(funcPtrDict["Box"])), boxInt, sizeof(intersectStart_t)) );
-            CudaErrchk( cudaMemcpyFromSymbol(&(std::get<0>(funcPtrDict["Cylinder"])), cylInt, sizeof(intersectStart_t)) );
-            CudaErrchk( cudaMemcpyFromSymbol(&(std::get<0>(funcPtrDict["Pyramid"])), pyrInt, sizeof(intersectStart_t)) );
-            CudaErrchk( cudaMemcpyFromSymbol(&(std::get<0>(funcPtrDict["Sphere"])), sphInt, sizeof(intersectStart_t)) );
-        }
-    }
+    AbstractShape(); 
 
     virtual ~AbstractShape() { ; }
 

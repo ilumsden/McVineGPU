@@ -3,9 +3,6 @@
 
 #include "UtilKernels.hpp"
 
-typedef void (*intersectStart_t)(Vec3<float>&, Vec3<float>&, const float*,
-                                 float*, Vec3<float>*);
-
 /* This function calculates the intersection time and point between
  * a neutron (represented by x, y, z, va, vb, and vc) and a
  * rectangle (represented by A, B, and zdiff). The remaining
@@ -106,14 +103,9 @@ __device__ void intersectSphere(Vec3<float> &origins, Vec3<float> &vel,
                                 const float *shapeData,
                                 float *ts, Vec3<float> *pts);
 
-__device__ intersectStart_t boxInt = intersectBox;
-__device__ intersectStart_t cylInt = intersectCylinder;
-__device__ intersectStart_t pyrInt = intersectPyramid;
-__device__ intersectStart_t sphInt = intersectSphere;
-
-__global__ void intersect(intersectStart_t intPtr, Vec3<float> *origins, 
+__global__ void intersect(const int shapeKey, Vec3<float> *origins, 
                           Vec3<float> *vel, const float *shapeData, 
-                          const int N, const int groupSize,
+                          const int N,
                           float *ts, Vec3<float> *pts);
 
 #endif

@@ -142,7 +142,6 @@ __device__ void intersectCylinderSide(float *ts, Vec3<float> *pts,
         }
     }
     // Again used to prevent memory corruption
-    //__syncthreads();
 }
 
 __device__ void intersectCylinderTopBottom(float *ts, Vec3<float> *pts,
@@ -434,7 +433,6 @@ __device__ void intersectPyramid(Vec3<float> &origins, Vec3<float> &vel,
                       Vec3<float>(-shapeData[0]/2, shapeData[1]/2, -shapeData[2]),
                       Vec3<float>(shapeData[0]/2, shapeData[1]/2, -shapeData[2]),
                       offset);
-    //__syncthreads();
 }
 
 __device__ void intersectSphere(Vec3<float> &origins, Vec3<float> &vel,
@@ -489,17 +487,38 @@ __device__ void intersectSphere(Vec3<float> &origins, Vec3<float> &vel,
             pts[1] = origins + (vel * t1);
         }
     }
-    //__syncthreads();
 }
 
-__global__ void intersect(intersectStart_t intPtr, Vec3<float> *origins,
+__global__ void intersect(const int shapeKey, Vec3<float> *origins,
                           Vec3<float> *vel, const float *shapeData,
-                          const int N, const int groupSize,
+                          const int N,
                           float *ts, Vec3<float> *pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N)
     {
-        (*intPtr)(origins[index], vel[index], shapeData, &(ts[groupSize*index]), &(pts[2*index]));
+        switch(shapeKey)
+        {
+            case 0:
+                intersectBox(origins[index], vel[index], shapeData,
+                             &(ts[6*index]), &(pts[2*index]));
+                break;
+            case 1:
+                intersectCylinder(origins[index], vel[index], shapeData,
+                                  &(ts[4*index]), &(pts[2*index]));
+                break;
+            case 2:
+                intersectPyramid(origins[index], vel[index], shapeData,
+                                 &(ts[5*index]), &(pts[2*index]));
+                break;
+            case 3:
+                intersectSphere(origins[index], vel[index], shapeData,
+                                &(ts[2*index]), &(pts[2*index]));
+                break;
+            default:
+                printf("Error: Invalid value for \"shapeKey\" (must be in range 0-3, inclusive).\nExiting GPU.\n");
+                asm("trap;");
+        }
     }
+    __syncthreads();
 }

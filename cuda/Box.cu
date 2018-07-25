@@ -23,9 +23,9 @@ void Box::exteriorIntersect(Vec3<float> *d_origins,
      * This array will store the intersection coordinates calculated 
      * by the intersectBox kernel.
      */
-    Vec3<float> *intersect;
-    CudaErrchk( cudaMalloc(&intersect, 2*N*sizeof(Vec3<float>)) );
-    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
+    Vec3<float> *d_intersect;
+    CudaErrchk( cudaMalloc(&d_intersect, 2*N*sizeof(Vec3<float>)) );
+    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
     CudaErrchkNoCode();
     /* The device float array "simp_times" is allocated on device, and
      * its elements' values are set to -5.
@@ -46,17 +46,16 @@ void Box::exteriorIntersect(Vec3<float> *d_origins,
                                            d_vel,
                                            X, Y, Z,
                                            N, device_time, intersect);*/
-    intersect<<<numBlocks, blockSize>>>(std::get<0>(funcPtrDict[type]),
+    intersect<<<numBlocks, blockSize>>>(interKeyDict[type],
                                         d_origins, d_vel, d_data, N,
-                                        std::get<1>(funcPtrDict[type]),
-                                        device_time, intersect);
+                                        device_time, d_intersect);
     //simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 6, 2, simp_times);
     simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time, 
-                                                     intersect,
+                                                     d_intersect,
                                                      N, 6, 2, 2,
                                                      simp_times,
-                                                     intersect);
-    forceIntersectionOrder<<<numBlocks, blockSize>>>(simp_times, intersect, N);
+                                                     d_intersect);
+    forceIntersectionOrder<<<numBlocks, blockSize>>>(simp_times, d_intersect, N);
     CudaErrchkNoCode();
     /* The data from simp_times and intersect is copied into
      * int_times and int_coords respectively.
@@ -64,12 +63,12 @@ void Box::exteriorIntersect(Vec3<float> *d_origins,
     float *it = int_times.data();
     Vec3<float> *ic = int_coords.data();
     CudaErrchk( cudaMemcpy(it, simp_times, 2*N*sizeof(float), cudaMemcpyDeviceToHost) );
-    CudaErrchk( cudaMemcpy(ic, intersect, 2*N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaMemcpy(ic, d_intersect, 2*N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
     /* The device memory allocated at the beginning of the function
      * is freed.
      */
     CudaErrchk( cudaFree(device_time) );
-    CudaErrchk( cudaFree(intersect) );
+    CudaErrchk( cudaFree(d_intersect) );
     CudaErrchk( cudaFree(simp_times) );
     CudaErrchk( cudaFree(d_data) );
 }
@@ -100,9 +99,9 @@ void Box::interiorIntersect(Vec3<float> *d_origins,
      * This array will store the intersection coordinates calculated 
      * by the intersectBox kernel.
      */
-    Vec3<float> *intersect;
-    CudaErrchk( cudaMalloc(&intersect, 2*N*sizeof(Vec3<float>)) );
-    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
+    Vec3<float> *d_intersect;
+    CudaErrchk( cudaMalloc(&d_intersect, 2*N*sizeof(Vec3<float>)) );
+    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
     CudaErrchkNoCode();
     /* The device float array "simp_times" is allocated on device, and
      * its elements' values are set to -5.
@@ -131,14 +130,13 @@ void Box::interiorIntersect(Vec3<float> *d_origins,
                                            d_vel,
                                            X, Y, Z,
                                            N, device_time, intersect);*/
-    intersect<<<numBlocks, blockSize>>>(std::get<0>(funcPtrDict[type]),
+    intersect<<<numBlocks, blockSize>>>(interKeyDict[type],
                                         d_origins, d_vel, d_data, N,
-                                        std::get<1>(funcPtrDict[type]),
-                                        device_time, intersect);
+                                        device_time, d_intersect);
 #if defined(INTERIORTEST)
     Vec3<float> *ec = exit_coords.data();
     float *et = exit_times.data();
-    CudaErrchk( cudaMemcpy(ec, intersect, 2*N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaMemcpy(ec, d_intersect, 2*N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
     CudaErrchk( cudaMemcpy(et, device_time, 6*N*sizeof(float), cudaMemcpyDeviceToHost) );
     std::fstream fout;
     fout.open("interiorTest.txt", std::ios::out);
@@ -163,7 +161,7 @@ void Box::interiorIntersect(Vec3<float> *d_origins,
     //simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 6, 1, simp_times);
     //simplifyPoints<<<numBlocks, blockSize>>>(intersect, N, 2, 1, simp_int);
     simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time,
-                                                     intersect,
+                                                     d_intersect,
                                                      N, 6, 2, 1,
                                                      simp_times,
                                                      simp_int);
@@ -179,7 +177,7 @@ void Box::interiorIntersect(Vec3<float> *d_origins,
      * is freed.
      */
     CudaErrchk( cudaFree(device_time) );
-    CudaErrchk( cudaFree(intersect) );
+    CudaErrchk( cudaFree(d_intersect) );
     CudaErrchk( cudaFree(simp_times) );
     CudaErrchk( cudaFree(simp_int) );
     CudaErrchk( cudaFree(d_data) );
