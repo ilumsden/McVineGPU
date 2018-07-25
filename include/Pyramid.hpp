@@ -10,19 +10,25 @@
 struct Pyramid : public AbstractShape
 {
     // Default Constructor
-    Pyramid() { type = "Pyramid"; }
-
-    /* "Explicit" Constructor
-     * This function takes three doubles and sets the base dimensions
-     * and height with them.
-     */
-    Pyramid(double X, double Y, double h)
-    {
-        edgeX = X; edgeY = Y; height = h;
-        type = "Pyramid";
+    Pyramid() 
+    { 
+        type = "Pyramid"; 
+        data = new float[3];
+        data[0] = 0; data[1] = 0; data[2] = 0;
     }
 
-    ~Pyramid() { ; }
+    /* "Explicit" Constructor
+     * This function takes three floats and sets the base dimensions
+     * and height with them.
+     */
+    Pyramid(float X, float Y, float h)
+    {
+        type = "Pyramid";
+        data = new float[3];
+        data[0] = X; data[1] = Y; data[2] = h;
+    }
+
+    ~Pyramid() { delete [] data; }
 
     /* The function that handles the calculation of the intersection points
      * and times between the Pyramid object and the neutrons represented
@@ -41,11 +47,6 @@ struct Pyramid : public AbstractShape
                                    const int N, const int blockSize, const int numBlocks,
                                    std::vector<float> &int_times, 
                                    std::vector< Vec3<float> > &int_coords) override;
-
-    /* These members store the Pyramid's base dimensions (in X and Y
-     * components) and height.
-     */
-    double edgeX, edgeY, height;
 };
 
 #endif

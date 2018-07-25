@@ -10,19 +10,25 @@
 struct Box : public AbstractShape
 {
     // Default Constructor
-    Box() { type = "Box"; }
-
-    /* "Explicit" Constructor.
-     * This function takes three doubles and sets the side lengths
-     * with them.
-     */
-    Box(const double a, const double b, const double c)
-    {
-        X=a; Y=b; Z=c;
-        type = "Box";
+    Box() 
+    { 
+        type = "Box"; 
+        data = new float[3];
+        data[0] = 0; data[1] = 0; data[2] = 0;
     }
 
-    ~Box() { ; }
+    /* "Explicit" Constructor.
+     * This function takes three floats and sets the side lengths
+     * with them.
+     */
+    Box(const float a, const float b, const float c)
+    {
+        type = "Box";
+        data = new float[3];
+        data[0] = a; data[1] = b; data[2] = c;
+    }
+
+    ~Box() { delete [] data; }
     
     /* The function that handles the calculation of the intersection
      * points and times between the Box object and the neutrons represented
@@ -41,9 +47,6 @@ struct Box : public AbstractShape
                                    const int N, const int blockSize, const int numBlocks,
                                    std::vector<float> &int_times,
                                    std::vector< Vec3<float> > &int_coords) override;
-
-    // These members store the Box's side lengths in the X, Y, and Z directions.
-    double X, Y, Z;
 };
 
 #endif

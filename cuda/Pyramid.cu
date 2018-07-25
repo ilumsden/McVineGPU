@@ -34,13 +34,20 @@ void Pyramid::exteriorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     CudaErrchk( cudaMalloc(&simp_times, 2*N*sizeof(float)) );
     initArray<float><<<numBlocks, blockSize>>>(simp_times, 2*N, -5);
     CudaErrchkNoCode();
+    float *d_data;
+    CudaErrchk( cudaMalloc(&d_data, 3*sizeof(float)) );
+    CudaErrchk( cudaMemcpy(d_data, data, 3*sizeof(float), cudaMemcpyHostToDevice) );
     // These vectors are resized to match the size of the arrays above.
     int_times.resize(2*N);
     int_coords.resize(2*N);
     // The kernels are called to perform the intersection calculation.
-    intersectPyramid<<<numBlocks, blockSize>>>(d_origins, d_vel,
+    /*intersectPyramid<<<numBlocks, blockSize>>>(d_origins, d_vel,
                                                edgeX, edgeY, height,
-                                               N, device_time, intersect);
+                                               N, device_time, intersect);*/
+    intersect<<<numBlocks, blockSize>>>(std::get<0>(funcPtrDict[type]),
+                                        d_origins, d_vel, d_data, N,
+                                        std::get<1>(funcPtrDict[type]),
+                                        device_time, intersect);
     simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time,
                                                      intersect,
                                                      N, 5, 2, 2,
@@ -61,6 +68,7 @@ void Pyramid::exteriorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     CudaErrchk( cudaFree(device_time) );
     CudaErrchk( cudaFree(intersect) );
     CudaErrchk( cudaFree(simp_times) );
+    CudaErrchk( cudaFree(d_data) );
 }
 
 void Pyramid::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
@@ -102,13 +110,20 @@ void Pyramid::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     CudaErrchk( cudaMalloc(&simp_int, N*sizeof(Vec3<float>)) );
     initArray< Vec3<float> ><<<numBlocks, blockSize>>>(simp_int, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
     CudaErrchkNoCode();
+    float *d_data;
+    CudaErrchk( cudaMalloc(&d_data, 3*sizeof(float)) );
+    CudaErrchk( cudaMemcpy(d_data, data, 3*sizeof(float), cudaMemcpyHostToDevice) );
     // These vectors are resized to match the size of the arrays above.
     int_times.resize(N);
     int_coords.resize(N);
     // The kernels are called to perform the intersection calculation.
-    intersectPyramid<<<numBlocks, blockSize>>>(d_origins, d_vel,
+    /*intersectPyramid<<<numBlocks, blockSize>>>(d_origins, d_vel,
                                                edgeX, edgeY, height,
-                                               N, device_time, intersect);
+                                               N, device_time, intersect);*/
+    intersect<<<numBlocks, blockSize>>>(std::get<0>(funcPtrDict[type]),
+                                        d_origins, d_vel, d_data, N,
+                                        std::get<1>(funcPtrDict[type]),
+                                        device_time, intersect);
     simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time,
                                                      intersect,
                                                      N, 5, 2, 1,
@@ -129,4 +144,5 @@ void Pyramid::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     CudaErrchk( cudaFree(intersect) );
     CudaErrchk( cudaFree(simp_times) );
     CudaErrchk( cudaFree(simp_int) );
+    CudaErrchk( cudaFree(d_data) );
 }

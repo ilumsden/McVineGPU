@@ -31,12 +31,19 @@ void Sphere::exteriorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     CudaErrchk( cudaMalloc(&intersect, 2*N*sizeof(Vec3<float>)) );
     initArray< Vec3<float> ><<<numBlocks, blockSize>>>(intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
     CudaErrchkNoCode();
+    float *d_data;
+    CudaErrchk( cudaMalloc(&d_data, sizeof(float)) );
+    CudaErrchk( cudaMemcpy(d_data, data, sizeof(float), cudaMemcpyHostToDevice) );
     // These vectors are resized to match the size of the arrays above.
     int_times.resize(2*N);
     int_coords.resize(2*N);
-    intersectSphere<<<numBlocks, blockSize>>>(d_origins, d_vel,
+    /*intersectSphere<<<numBlocks, blockSize>>>(d_origins, d_vel,
                                               radius,
-                                              N, device_time, intersect);
+                                              N, device_time, intersect);*/
+    intersect<<<numBlocks, blockSize>>>(std::get<0>(funcPtrDict[type]),
+                                        d_origins, d_vel, d_data, N,
+                                        std::get<1>(funcPtrDict[type]),
+                                        device_time, intersect);
     forceIntersectionOrder<<<numBlocks, blockSize>>>(device_time, intersect, N);
     CudaErrchkNoCode();
     /* The data from device_time and intersect is copied into
@@ -51,6 +58,7 @@ void Sphere::exteriorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
      */
     CudaErrchk( cudaFree(device_time) );
     CudaErrchk( cudaFree(intersect) );
+    CudaErrchk( cudaFree(d_data) );
 }
 
 void Sphere::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
@@ -92,12 +100,19 @@ void Sphere::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     CudaErrchk( cudaMalloc(&simp_int, N*sizeof(Vec3<float>)) );
     initArray< Vec3<float> ><<<numBlocks, blockSize>>>(simp_int, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
     CudaErrchkNoCode();
+    float *d_data;
+    CudaErrchk( cudaMalloc(&d_data, sizeof(float)) );
+    CudaErrchk( cudaMemcpy(d_data, data, sizeof(float), cudaMemcpyHostToDevice) );
     // These vectors are resized to match the size of the arrays above.
     int_times.resize(N);
     int_coords.resize(N);
-    intersectSphere<<<numBlocks, blockSize>>>(d_origins, d_vel,
+    /*intersectSphere<<<numBlocks, blockSize>>>(d_origins, d_vel,
                                               radius,
-                                              N, device_time, intersect);
+                                              N, device_time, intersect);*/
+    intersect<<<numBlocks, blockSize>>>(std::get<0>(funcPtrDict[type]),
+                                        d_origins, d_vel, d_data, N,
+                                        std::get<1>(funcPtrDict[type]),
+                                        device_time, intersect);
     simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time,
                                                      intersect,
                                                      N, 2, 2, 1,
@@ -118,4 +133,5 @@ void Sphere::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     CudaErrchk( cudaFree(intersect) );
     CudaErrchk( cudaFree(simp_times) );
     CudaErrchk( cudaFree(simp_int) );
+    CudaErrchk( cudaFree(d_data) );
 }
