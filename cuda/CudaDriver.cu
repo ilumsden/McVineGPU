@@ -359,9 +359,10 @@ void CudaDriver::findScatteringVels()
     /* Calls the elasticScatteringKernel function to update the neutron
      * velocities post-elastic scattering.
      */
-    elasticScatteringKernel<<<numBlocks, blockSize>>>(d_times,
-                                                      d_vel,
-                                                      d_randnums, N);
+    /*isotropicScatteringKernel<<<numBlocks, blockSize>>>(d_times,
+                                                        d_vel,
+                                                        d_randnums, N);*/
+    scatter<<<numBlocks, blockSize>>>(0, d_times, d_vel, d_randnums, N);
     CudaErrchkNoCode();
     /* Copies the new neutron velocities into the host-side neutron
      * velocity array.

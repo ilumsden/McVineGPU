@@ -33,9 +33,15 @@ __global__ void calcScatteringSites(float *ts,
  * scattering velocity vector and stores the new velocity in the
  * neutron state velocity array.
  */
-__global__ void elasticScatteringKernel(const float *ray_time,
-                                        Vec3<float> *vel,
-                                        float *rands,
-                                        const int N);
+__device__ void isotropicScatteringKernel(//const float *ray_time,
+                                          //Vec3<float> *vel,
+                                          Vec3<float> &vel,
+                                          float *rands);
+                                          //const int N);
+
+__global__ void scatter(const int scatterKey, const float *ray_time, 
+                        Vec3<float> *vel, float *rands, const int N);
+
+
 
 #endif
