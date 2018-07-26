@@ -207,7 +207,7 @@ __device__ void intersectCylinderTopBottom(float *ts, Vec3<float> *pts,
  * Note that this algorithm is not the same as the one used
  * currently in McVine.
  */
-__device__ void intersectTriangle(float &ts, Vec3<float> &pts,
+__device__ void intersectTriangle(float &ts, Vec3<float> *pts,
                                   const Vec3<float> &orig,
                                   const Vec3<float> &vel,
                                   const Vec3<float> &a,
@@ -289,7 +289,7 @@ __device__ void intersectTriangle(float &ts, Vec3<float> &pts,
     ts = t;
     if (off < 2)
     {
-        pts = orig + vel*t;
+        pts[off] = orig + vel*t;
         off++;
     }
 }
@@ -386,47 +386,36 @@ __device__ void intersectPyramid(Vec3<float> &origins, Vec3<float> &vel,
     {
         intersectRectangle(ts[0], pts[offset], origins, -shapeData[2], vel, shapeData[0], shapeData[1], 0, offset);
     }
+    else
+    {
+        ts[0] = -1;
+    }
     /* These calls to intersectTriangle determine if there are
      * any intersections between the neutron and the triangular
      * faces of the Pyramid.
      */
-    intersectTriangle(ts[1], pts[offset],
+    intersectTriangle(ts[1], pts,
                       origins,
                       vel,
                       Vec3<float>(0, 0, 0),
                       Vec3<float>(shapeData[0]/2, shapeData[1]/2, -shapeData[2]),
                       Vec3<float>(shapeData[0]/2, -shapeData[1]/2, -shapeData[2]),
                       offset);
-    if (offset >= 2)
-    {
-        ts[2] = -1; ts[3] = -1; ts[4] = -1;
-        return;
-    }
-    intersectTriangle(ts[2], pts[offset],
+    intersectTriangle(ts[2], pts,
                       origins,
                       vel,
                       Vec3<float>(0, 0, 0),
                       Vec3<float>(shapeData[0]/2, -shapeData[1]/2, -shapeData[2]),
                       Vec3<float>(-shapeData[0]/2, -shapeData[1]/2, -shapeData[2]),
                       offset);
-    if (offset >= 2)
-    {
-        ts[3] = -1; ts[4] = -1;
-        return;
-    }
-    intersectTriangle(ts[3], pts[offset],
+    intersectTriangle(ts[3], pts,
                       origins,
                       vel,
                       Vec3<float>(0, 0, 0),
                       Vec3<float>(-shapeData[0]/2, -shapeData[1]/2, -shapeData[2]),
                       Vec3<float>(-shapeData[0]/2, shapeData[1]/2, -shapeData[2]),
                       offset);
-    if (offset >= 2)
-    {
-        ts[4] = -1;
-        return;
-    }
-    intersectTriangle(ts[4], pts[offset],
+    intersectTriangle(ts[4], pts,
                       origins,
                       vel,
                       Vec3<float>(0, 0, 0),
