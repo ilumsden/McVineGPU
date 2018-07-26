@@ -27,17 +27,23 @@ void Sphere::exteriorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
      * This array will store the intersection coordinates calculated
      * by the intersectSphere kernel.
      */
-    Vec3<float> *intersect;
-    CudaErrchk( cudaMalloc(&intersect, 2*N*sizeof(Vec3<float>)) );
-    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
+    Vec3<float> *d_intersect;
+    CudaErrchk( cudaMalloc(&d_intersect, 2*N*sizeof(Vec3<float>)) );
+    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
     CudaErrchkNoCode();
+    float *d_data;
+    CudaErrchk( cudaMalloc(&d_data, sizeof(float)) );
+    CudaErrchk( cudaMemcpy(d_data, data, sizeof(float), cudaMemcpyHostToDevice) );
     // These vectors are resized to match the size of the arrays above.
     int_times.resize(2*N);
     int_coords.resize(2*N);
-    intersectSphere<<<numBlocks, blockSize>>>(d_origins, d_vel,
+    /*intersectSphere<<<numBlocks, blockSize>>>(d_origins, d_vel,
                                               radius,
-                                              N, device_time, intersect);
-    forceIntersectionOrder<<<numBlocks, blockSize>>>(device_time, intersect, N);
+                                              N, device_time, intersect);*/
+    intersect<<<numBlocks, blockSize>>>(interKeyDict[type],
+                                        d_origins, d_vel, d_data, N,
+                                        device_time, d_intersect);
+    forceIntersectionOrder<<<numBlocks, blockSize>>>(device_time, d_intersect, N);
     CudaErrchkNoCode();
     /* The data from device_time and intersect is copied into
      * int_times and int_coords respectively.
@@ -45,12 +51,13 @@ void Sphere::exteriorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     float *it = int_times.data();
     Vec3<float> *ic = int_coords.data();
     CudaErrchk( cudaMemcpy(it, device_time, 2*N*sizeof(float), cudaMemcpyDeviceToHost) );
-    CudaErrchk( cudaMemcpy(ic, intersect, 2*N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaMemcpy(ic, d_intersect, 2*N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
     /* The device memory allocated at the beginning of the function
      * is freed.
      */
     CudaErrchk( cudaFree(device_time) );
-    CudaErrchk( cudaFree(intersect) );
+    CudaErrchk( cudaFree(d_intersect) );
+    CudaErrchk( cudaFree(d_data) );
 }
 
 void Sphere::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
@@ -72,9 +79,9 @@ void Sphere::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
      * This array will store the intersection coordinates calculated
      * by the intersectSphere kernel.
      */
-    Vec3<float> *intersect;
-    CudaErrchk( cudaMalloc(&intersect, 2*N*sizeof(Vec3<float>)) );
-    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
+    Vec3<float> *d_intersect;
+    CudaErrchk( cudaMalloc(&d_intersect, 2*N*sizeof(Vec3<float>)) );
+    initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
     CudaErrchkNoCode();
     /* The float array "simp_times" is allocated on the deivce, and
      * its elements' values are set to -5.
@@ -92,14 +99,20 @@ void Sphere::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
     CudaErrchk( cudaMalloc(&simp_int, N*sizeof(Vec3<float>)) );
     initArray< Vec3<float> ><<<numBlocks, blockSize>>>(simp_int, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
     CudaErrchkNoCode();
+    float *d_data;
+    CudaErrchk( cudaMalloc(&d_data, sizeof(float)) );
+    CudaErrchk( cudaMemcpy(d_data, data, sizeof(float), cudaMemcpyHostToDevice) );
     // These vectors are resized to match the size of the arrays above.
     int_times.resize(N);
     int_coords.resize(N);
-    intersectSphere<<<numBlocks, blockSize>>>(d_origins, d_vel,
+    /*intersectSphere<<<numBlocks, blockSize>>>(d_origins, d_vel,
                                               radius,
-                                              N, device_time, intersect);
+                                              N, device_time, intersect);*/
+    intersect<<<numBlocks, blockSize>>>(interKeyDict[type],
+                                        d_origins, d_vel, d_data, N,
+                                        device_time, d_intersect);
     simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time,
-                                                     intersect,
+                                                     d_intersect,
                                                      N, 2, 2, 1,
                                                      simp_times,
                                                      simp_int);
@@ -115,7 +128,8 @@ void Sphere::interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
      * is freed.
      */
     CudaErrchk( cudaFree(device_time) );
-    CudaErrchk( cudaFree(intersect) );
+    CudaErrchk( cudaFree(d_intersect) );
     CudaErrchk( cudaFree(simp_times) );
     CudaErrchk( cudaFree(simp_int) );
+    CudaErrchk( cudaFree(d_data) );
 }

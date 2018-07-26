@@ -11,12 +11,11 @@
  * arrays.
  * This function can be called on device only.
  */
-__device__ void intersectRectangle(float* ts, Vec3<float>* pts,
+__device__ void intersectRectangle(float &ts, Vec3<float> &pts,
                                    const Vec3<float> &orig, float zdiff,
                                    const Vec3<float> &vel,
                                    const float A, const float B,
-                                   const int key, const int groupSize,
-                                   const int off1, int &off2);
+                                   const int key, int &off);
 
 /* This function calculates the intersection time and coordinates between
  * a neutron (represented by x, y, z, vx, vy, and vz) and the rounded
@@ -51,13 +50,13 @@ __device__ void intersectCylinderTopBottom(float *ts, Vec3<float> *pts,
  * in the correct spot in the ts and pts arrays.
  * This function can be called on device only.
  */
-__device__ void intersectTriangle(float *ts, Vec3<float> *pts,
+__device__ void intersectTriangle(float &ts, Vec3<float> *pts,
                                   const Vec3<float> &orig,
                                   const Vec3<float> &vel,
                                   const Vec3<float> &a,
                                   const Vec3<float> &b,
                                   const Vec3<float> &c,
-                                  const int off1, int &off2);
+                                  int &off);
 
 /* This function controlls the calculation of the intersections between
  * a collection of neutrons (represented by rx, ry, rz, vx, vy, and vz)
@@ -66,10 +65,10 @@ __device__ void intersectTriangle(float *ts, Vec3<float> *pts,
  * and coordinates are stored in the ts and pts arrays respectively.
  * This function can be called from host.
  */
-__global__ void intersectBox(Vec3<float>* origins,
-                             Vec3<float>* vel,
-                             const float X, const float Y, const float Z,
-                             const int N, float* ts, Vec3<float>* pts);
+__device__ void intersectBox(Vec3<float>& origins,
+                             Vec3<float>& vel,
+                             const float *shapeData,
+                             float* ts, Vec3<float>* pts);
 
 /* This function controlls the calculation of the intersections between
  * a collection of neutrons (represented by rx, ry, rz, vx, vy, and vz)
@@ -78,9 +77,9 @@ __global__ void intersectBox(Vec3<float>* origins,
  * and coordinates are stored in the ts and pts arrays respectively.
  * This function can be called from host.
  */
-__global__ void intersectCylinder(Vec3<float> *origins, Vec3<float> *vel,
-                                  const float r, const float h,
-                                  const int N, float *ts, Vec3<float> *pts);
+__device__ void intersectCylinder(Vec3<float> &origins, Vec3<float> &vel,
+                                  const float *shapeData,
+                                  float *ts, Vec3<float> *pts);
 
 /* This function controlls the calculation of the intersections between
  * a collection of neutrons (represented by rx, ry, rz, vx, vy, and vz)
@@ -89,9 +88,9 @@ __global__ void intersectCylinder(Vec3<float> *origins, Vec3<float> *vel,
  * and coordinates are stored in the ts and pts arrays respectively.
  * This function can be called from host.
  */
-__global__ void intersectPyramid(Vec3<float> *origins, Vec3<float> *vel,
-                                 const float X, const float Y, const float H,
-                                 const int N, float *ts, Vec3<float> *pts);
+__device__ void intersectPyramid(Vec3<float> &origins, Vec3<float> &vel,
+                                 const float *shapeData,
+                                 float *ts, Vec3<float> *pts);
 
 /* This function controlls the calculation of the intersections between
  * a collection of neutrons (represented by rx, ry, rz, vx, vy, and vz)
@@ -100,8 +99,13 @@ __global__ void intersectPyramid(Vec3<float> *origins, Vec3<float> *vel,
  * and coordinates are stored in the ts and pts arrays respectively.
  * This function can be called from host.
  */
-__global__ void intersectSphere(Vec3<float> *origins, Vec3<float> *vel,
-                                const float radius,
-                                const int N, float *ts, Vec3<float> *pts);
+__device__ void intersectSphere(Vec3<float> &origins, Vec3<float> &vel,
+                                const float *shapeData,
+                                float *ts, Vec3<float> *pts);
+
+__global__ void intersect(const int shapeKey, Vec3<float> *origins, 
+                          Vec3<float> *vel, const float *shapeData, 
+                          const int N,
+                          float *ts, Vec3<float> *pts);
 
 #endif

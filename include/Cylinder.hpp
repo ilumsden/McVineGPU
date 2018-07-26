@@ -12,20 +12,26 @@
 struct Cylinder : public AbstractShape
 {
     // Default Constructor
-    Cylinder() { type = "Cylinder"; }
+    Cylinder() 
+    { 
+        type = "Cylinder"; 
+        data = new float[2];
+        data[0] = 0; data[1] = 0;
+    }
     
     /* "Explicit" Constructor
-     * This function takes two doubles and uses them to set
+     * This function takes two floats and uses them to set
      * the Cylinder's radius and height.
      */
-    Cylinder(const double kRadius, const double kHeight)
+    Cylinder(const float kRadius, const float kHeight)
     {
-        radius = kRadius;
-        height = kHeight;
         type = "Cylinder";
+        data = new float[2];
+        data[0] = kRadius;
+        data[1] = kHeight;
     }
 
-    ~Cylinder() { ; }
+    ~Cylinder() { delete [] data; }
 
     /* The function that handles the calculation of the intersection
      * points and times between the Cylinder object and the neutrons
@@ -46,9 +52,6 @@ struct Cylinder : public AbstractShape
                                    const int N, const int blockSize, const int numBlocks,
                                    std::vector<float> &int_times, 
                                    std::vector< Vec3<float> > &int_coords) override;
-
-    // These members store the Cylinder's radius and height.
-    double radius, height;
 };
 
 #endif

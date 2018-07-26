@@ -10,15 +10,25 @@
 struct Sphere : public AbstractShape
 {
     // Default Constructor
-    Sphere() { type = "Sphere"; }
+    Sphere() 
+    { 
+        type = "Sphere"; 
+        data = new float[1];
+        data[0] = 0;
+    }
 
     /* "Explicit" Constructor
-     * This function takes a double which is used to set the Sphere's
+     * This function takes a float which is used to set the Sphere's
      * radius.
      */
-    Sphere(const double r) { radius = r; type = "Sphere"; }
+    Sphere(const float r) 
+    { 
+        type = "Sphere"; 
+        data = new float[1];
+        data[0] = r;
+    }
 
-    ~Sphere() { ; }
+    ~Sphere() { delete [] data; }
 
     /* The function that handles the calculation of the intersection
      * points and times between the Sphere object and the neutrons
@@ -39,9 +49,6 @@ struct Sphere : public AbstractShape
                                    const int N, const int blockSize, const int numBlocks,
                                    std::vector<float> &int_times, 
                                    std::vector< Vec3<float> > &int_coords) override;
-
-    // This member stores the Sphere's radius.
-    double radius;
 };
 
 #endif

@@ -1,11 +1,10 @@
 #include "IntersectKernels.hpp"
 
-__device__ void intersectRectangle(float* ts, Vec3<float>* pts,
+__device__ void intersectRectangle(float &ts, Vec3<float> &pts,
                                    const Vec3<float> &orig, float zdiff,
                                    const Vec3<float> &vel,
                                    const float A, const float B,
-                                   const int key, const int groupSize, 
-                                   const int off1, int &off2)
+                                   const int key, int &off)
 {
     /* The system is temporarily shifted so that the plane potentially
      * being intersected lies along a coordinate plane (i.e. if the
@@ -20,7 +19,6 @@ __device__ void intersectRectangle(float* ts, Vec3<float>* pts,
      * The intersection point is calculated using basic kinematics.
      */
     Vec3<float> pt = orig + vel*t;
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
     /* These nested if-statements convert the key into a pair of
      * values that are used to ensure the intersection point is
      * within the rectangle.
@@ -30,13 +28,13 @@ __device__ void intersectRectangle(float* ts, Vec3<float>* pts,
     // This if-statement ensures the intersection is within the rectangle.
     if (fabsf(pt[n1]) < (A/2) && fabsf(pt[n2]) < (B/2))
     {
-        if (off2 < 2)
+        if (off < 2)
         {
-            pts[2*index + off2] = pt;
-            // Increases off2 to prevent data overwrite.
-            off2++;
+            pts = pt;
+            // Increases off to prevent data overwrite.
+            off++;
         }
-        ts[off1 + index*groupSize] = t;
+        ts = t;
     }
     /* If the intersection coordinates do not fall within the rectangle,
      * a time of -1 is assigned to the function call's element in ts.
@@ -44,7 +42,7 @@ __device__ void intersectRectangle(float* ts, Vec3<float>* pts,
      */
     else
     {
-        ts[off1 + index*groupSize] = -1;
+        ts = -1;
     }
 }
 
@@ -64,7 +62,6 @@ __device__ void intersectCylinderSide(float *ts, Vec3<float> *pts,
     float b = 2*(orig[0]*vel[0] + orig[1]*vel[1]);
     float c = orig[0]*orig[0] + orig[1]*orig[1] - r*r; 
     float t0, t1;
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
     /* If the solveQuadratic function returns false, there are no
      * valid intersection times. As a result, there is no
      * intersection with the Cylinder's side, and the corresponding
@@ -72,8 +69,8 @@ __device__ void intersectCylinderSide(float *ts, Vec3<float> *pts,
      */
     if (!solveQuadratic(a, b, c, t0, t1))
     {
-        ts[4*index + 2] = -1;
-        ts[4*index + 3] = -1;
+        ts[0] = -1;
+        ts[1] = -1;
     }
     /* In this case, there is a valid intersection with the Cylinder's 
      * side. However, since t0 < 0 and since t0 is guaranteed to be
@@ -87,71 +84,67 @@ __device__ void intersectCylinderSide(float *ts, Vec3<float> *pts,
          * second intersection is not possible in this case, this element
          * of ts is given a default value of -1.
          */
-        ts[4*index + 3] = -1;
+        ts[1] = -1;
         /* The neutron only intersects the side of the Cylinder 
          * if the absolute value of the Z-coordinate of the intersection
          * point is less than h/2.
          */
         if (fabsf(orig[2]+vel[2]*t1) < h/2)
         {
-            ts[4*index + 2] = t1;
+            ts[0] = t1;
             // See intersectRectangle
             if (offset < 2)
             {
-                pts[2*index + offset] = orig + (vel*t1);
+                pts[offset] = orig + (vel*t1);
                 offset++;
             }
         }
         else
         {
-            ts[4*index + 2] = -1;
+            ts[0] = -1;
         }
     }
     // In this case, there are two valid intersection times.
     else
     {
         // i is used to track the offset for ts
-        int i = 2;
+        int i = 0;
         if (fabsf(orig[2]+vel[2]*t0) < h/2)
         {
-            ts[4*index + i] = t0;
+            ts[i] = t0;
             i++;
             if (offset < 2)
             {
-                pts[2*index + offset] = orig + (vel*t0);
+                pts[offset] = orig + (vel*t0);
                 offset++;
             }
         }
         if (fabsf(orig[2]+vel[2]*t1) < h/2)
         {
-            ts[4*index + i] = t1;
+            ts[i] = t1;
             i++;
             if (offset < 2)
             {
-                pts[2*index + offset] = orig + (vel*t1);
+                pts[offset] = orig + (vel*t1);
                 offset++;
             }
         }
-        /* If i < 4, at least one time was not set in ts.
+        /* If i < 2, at least one time was not set in ts.
          * This if-statement will set the time of these unset
          * elements to -1.
          */
-        if (i < 4)
+        if (i < 2)
         {
-            for (int j = i; j < 4; j++)
+            for (int j = i; j < 2; j++)
             {
-                ts[4*index + j] = -1;
+                ts[j] = -1;
             }
         }
     }
     // Again used to prevent memory corruption
-    __syncthreads();
 }
 
-__device__ void intersectCylinderTopBottom(//float *ts, float *pts,
-                                           float *ts, Vec3<float> *pts,
-                                           //float x, float y, float z,
-                                           //float vx, float vy, float vz,
+__device__ void intersectCylinderTopBottom(float *ts, Vec3<float> *pts,
                                            const Vec3<float> &orig,
                                            const Vec3<float> &vel,
                                            const float r, const float h,
@@ -161,7 +154,6 @@ __device__ void intersectCylinderTopBottom(//float *ts, float *pts,
     float r2 = r*r;
     float hh = h/2;
     Vec3<float> faceint;
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
     /* Time is calculated by dividing the Z-distance the neutron has
      * to travel to reach the Z-coordinate of the top of the Cylinder
      * by the Z component of the neutron's velocity.
@@ -178,33 +170,33 @@ __device__ void intersectCylinderTopBottom(//float *ts, float *pts,
      */
     if (faceint[0]*faceint[0] + faceint[1]*faceint[1] <= r2)
     {
-        ts[4*index] = t;
+        ts[0] = t;
         if (offset < 2)
         {
-            pts[2*index + offset] = faceint;
+            pts[offset] = faceint;
             offset++;
         }
     }
     // Otherwise, the time is stored as -1.
     else
     {
-        ts[4*index] = -1;
+        ts[0] = -1;
     }
     // Repeat the above step for the bottom face of the Cylinder.
     t = (-hh-orig[2])/vel[2];
     faceint = orig + (vel * t);
     if (faceint[0]*faceint[0] + faceint[1]*faceint[1] <= r2)
     {
-        ts[4*index + 1] = t;
+        ts[1] = t;
         if (offset < 2)
         {
-            pts[2*index + offset] = faceint;
+            pts[offset] = faceint;
             offset++;
         }
     }
     else
     {
-        ts[4*index + 1] = -1;
+        ts[1] = -1;
     }
 }
 
@@ -215,15 +207,14 @@ __device__ void intersectCylinderTopBottom(//float *ts, float *pts,
  * Note that this algorithm is not the same as the one used
  * currently in McVine.
  */
-__device__ void intersectTriangle(float *ts, Vec3<float> *pts,
+__device__ void intersectTriangle(float &ts, Vec3<float> *pts,
                                   const Vec3<float> &orig,
                                   const Vec3<float> &vel,
                                   const Vec3<float> &a,
                                   const Vec3<float> &b,
                                   const Vec3<float> &c,
-                                  const int off1, int &off2)
+                                  int &off)
 {   
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
     const float EPSILON = 1e-7;
     /* edge1 is the vector corresponding to the edge of the
      *     triangle between vertices a and b.
@@ -252,7 +243,7 @@ __device__ void intersectTriangle(float *ts, Vec3<float> *pts,
      */
     if (fabsf(denom) < EPSILON)
     {
-        ts[5*index + off1] = -1;
+        ts = -1;
         return;
     }
     frac = 1/denom;
@@ -271,7 +262,7 @@ __device__ void intersectTriangle(float *ts, Vec3<float> *pts,
      */
     if (u < 0 || u > 1)
     {
-        ts[5*index + off1] = -1;
+        ts = -1;
         return;
     }
     q = s * edge1;
@@ -283,7 +274,7 @@ __device__ void intersectTriangle(float *ts, Vec3<float> *pts,
      */
     if (v < 0 || u+v > 1)
     {
-        ts[5*index + off1] = -1;
+        ts = -1;
         return;
     }
     float t = frac * (edge2 | q);
@@ -295,211 +286,228 @@ __device__ void intersectTriangle(float *ts, Vec3<float> *pts,
     /* If the code gets to this point, there is a valid intersection,
      * and the intersection data is stored.
      */
-    ts[5*index + off1] = t;
-    if (off2 < 2)
+    ts = t;
+    if (off < 2)
     {
-        pts[2*index + off2] = orig + vel*t;
-        off2++;
+        pts[off] = orig + vel*t;
+        off++;
     }
 }
 
-__global__ void intersectBox(Vec3<float>* origins,
-                             Vec3<float>* vel,
-                             const float X, const float Y, const float Z, 
-                             const int N, float* ts, Vec3<float>* pts)
+// Data is going to be broken down into groupings in intersect kernel.
+__device__ void intersectBox(Vec3<float>& origins,
+                             Vec3<float>& vel,
+                             const float *shapeData,
+                             float* ts, Vec3<float>* pts)
 {
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    // This is done to prevent excess threads from interfering in the code.
-    if (index < N)
+    /* The offset variable is used to ensure only
+     * 2 intersection points are recorded.
+     */
+    int offset = 0;
+    /* If the neutron does not move in the Z-direction, there will
+     * never be an intersection with the top or bottom. So,
+     * the times for top and bottom intersection are set to -1.
+     * Otherwise, the intersectRectangle function is used to
+     * calculate any potential intersection times and points.
+     */
+    if (vel[2] != 0)
     {
-        /* The offset variable is used to ensure only
-         * 2 intersection points are recorded.
-         */
-        int offset = 0;
-        /* If the neutron does not move in the Z-direction, there will
-         * never be an intersection with the top or bottom. So,
-         * the times for top and bottom intersection are set to -1.
-         * Otherwise, the intersectRectangle function is used to
-         * calculate any potential intersection times and points.
-         */
-        if (vel[index][2] != 0)
+        intersectRectangle(ts[0], pts[offset], origins, shapeData[2]/2, vel, shapeData[0], shapeData[1], 0, offset);
+        intersectRectangle(ts[1], pts[offset], origins, -shapeData[2]/2, vel, shapeData[0], shapeData[1], 0, offset);
+    }
+    else
+    {
+        ts[0] = -1;
+        ts[1] = -1;
+    }
+    /* If the neutron does not move in the X-direction, there will
+     * never be an intersection with the sides parallel to the YZ plane.
+     * So, the times for these intersections are set to -1.
+     * Otherwise, the intersectRectangle function is used to
+     * calculate any potential intersection times and points.
+     */
+    if (vel[0] != 0 && offset < 2)
+    {
+        intersectRectangle(ts[2], pts[offset], origins, shapeData[0]/2, vel, shapeData[1], shapeData[2], 2, offset);
+        intersectRectangle(ts[3], pts[offset], origins, -shapeData[0]/2, vel, shapeData[1], shapeData[2], 2, offset);
+    }
+    else
+    {
+        ts[2] = -1;
+        ts[3] = -1;
+    }
+    /* If the neutron does not move in the Y-direction, there will
+     * never be an intersection with the sides parallel to the XZ plane.
+     * So, the times for these intersections are set to -1.
+     * Otherwise, the intersectRectangle function is used to
+     * calculate any potential intersection times and points.
+     */
+    if (vel[1] != 0 && offset < 2)
+    {
+        intersectRectangle(ts[4], pts[offset], origins, shapeData[1]/2, vel, shapeData[2], shapeData[0], 1, offset);
+        intersectRectangle(ts[5], pts[offset], origins, -shapeData[1]/2, vel, shapeData[2], shapeData[0], 1, offset);
+    }
+    else
+    {
+        ts[4] = -1;
+        ts[5] = -1;
+    }
+}
+
+__device__ void intersectCylinder(Vec3<float> &origins, Vec3<float> &vel,
+                                  const float *shapeData,
+                                  float *ts, Vec3<float> *pts)
+{
+    /* The offset variable is used to ensure only
+     * 2 intersection points are recorded.
+     */
+    int offset = 0;
+    /* The actual intersection calculations are carried out
+     * by these two helper functions.
+     */
+    intersectCylinderTopBottom(&(ts[0]), pts, origins, vel, shapeData[0], shapeData[1], offset);
+    intersectCylinderSide(&(ts[2]), pts, origins, vel, shapeData[0], shapeData[1], offset);
+}
+
+__device__ void intersectPyramid(Vec3<float> &origins, Vec3<float> &vel,
+                                 const float *shapeData,
+                                 float *ts, Vec3<float> *pts)
+{
+    /* The offset variable is used to ensure only
+     * 2 intersection points are recorded.
+     */
+    int offset = 0;
+    /* If the neutron doesn't move in the Z-direction, it will
+     * never intersect the Pyramid's base. If it might intersect,
+     * the intersectRectangle function is used to determine any
+     * intersection point.
+     */
+    if (vel[2] != 0)
+    {
+        intersectRectangle(ts[0], pts[offset], origins, -shapeData[2], vel, shapeData[0], shapeData[1], 0, offset);
+    }
+    else
+    {
+        ts[0] = -1;
+    }
+    /* These calls to intersectTriangle determine if there are
+     * any intersections between the neutron and the triangular
+     * faces of the Pyramid.
+     */
+    intersectTriangle(ts[1], pts,
+                      origins,
+                      vel,
+                      Vec3<float>(0, 0, 0),
+                      Vec3<float>(shapeData[0]/2, shapeData[1]/2, -shapeData[2]),
+                      Vec3<float>(shapeData[0]/2, -shapeData[1]/2, -shapeData[2]),
+                      offset);
+    intersectTriangle(ts[2], pts,
+                      origins,
+                      vel,
+                      Vec3<float>(0, 0, 0),
+                      Vec3<float>(shapeData[0]/2, -shapeData[1]/2, -shapeData[2]),
+                      Vec3<float>(-shapeData[0]/2, -shapeData[1]/2, -shapeData[2]),
+                      offset);
+    intersectTriangle(ts[3], pts,
+                      origins,
+                      vel,
+                      Vec3<float>(0, 0, 0),
+                      Vec3<float>(-shapeData[0]/2, -shapeData[1]/2, -shapeData[2]),
+                      Vec3<float>(-shapeData[0]/2, shapeData[1]/2, -shapeData[2]),
+                      offset);
+    intersectTriangle(ts[4], pts,
+                      origins,
+                      vel,
+                      Vec3<float>(0, 0, 0),
+                      Vec3<float>(-shapeData[0]/2, shapeData[1]/2, -shapeData[2]),
+                      Vec3<float>(shapeData[0]/2, shapeData[1]/2, -shapeData[2]),
+                      offset);
+}
+
+__device__ void intersectSphere(Vec3<float> &origins, Vec3<float> &vel,
+                                const float *shapeData,
+                                float *ts, Vec3<float> *pts)
+{
+    /* Calculates the a, b, and c parameters needed for the
+     * quadratic formula. These parameters are defined by the
+     * equation that is developed by plugging the components
+     * of the ray equation for a neutron
+     * (<x,y,z> = <x0,y0,z0>+t*<vx,vy,vz>) into the equation of
+     * a Sphere.
+     */
+    float a = (vel | vel);
+    float b = 2*(origins | vel);
+    float c = (origins | origins);
+    c -= shapeData[0]*shapeData[0];
+    /* The solveQuadratic function is used to calculate the
+     * two potential intersection times. If the function
+     * returns false, the neutron does not intersect, and the
+     * corresponding values in ts are set to -1.
+     */
+    float t0, t1;
+    if (!solveQuadratic(a, b, c, t0, t1))
+    {
+        ts[0] = -1;
+        ts[1] = -1;
+        return;
+    }
+    /* If solveQuadratic returns true, the times are stored in 
+     * ts, and the intersection points are calculated and stored
+     * in pts.
+     */
+    else
+    {
+        if (t0 < 0)
         {
-            intersectRectangle(ts, pts, origins[index], Z/2, vel[index], X, Y, 0, 6, 0, offset);
-            intersectRectangle(ts, pts, origins[index], -Z/2, vel[index], X, Y, 0, 6, 1, offset);
+            ts[0] = -1;
         }
         else
         {
-            ts[index*6] = -1;
-            ts[index*6 + 1] = -1;
+            ts[0] = t0;
+            pts[0] = origins + (vel * t0);
         }
-        /* If the neutron does not move in the X-direction, there will
-         * never be an intersection with the sides parallel to the YZ plane.
-         * So, the times for these intersections are set to -1.
-         * Otherwise, the intersectRectangle function is used to
-         * calculate any potential intersection times and points.
-         */
-        if (vel[index][0] != 0)
+        if (t1 < 0)
         {
-            intersectRectangle(ts, pts, origins[index], X/2, vel[index], Y, Z, 2, 6, 2, offset);
-            intersectRectangle(ts, pts, origins[index], -X/2, vel[index], Y, Z, 2, 6, 3, offset);
+            ts[1] = -1;
         }
         else
         {
-            ts[index*6 + 2] = -1;
-            ts[index*6 + 3] = -1;
-        }
-        /* If the neutron does not move in the Y-direction, there will
-         * never be an intersection with the sides parallel to the XZ plane.
-         * So, the times for these intersections are set to -1.
-         * Otherwise, the intersectRectangle function is used to
-         * calculate any potential intersection times and points.
-         */
-        if (vel[index][1] != 0)
-        {
-            intersectRectangle(ts, pts, origins[index], Y/2, vel[index], Z, X, 1, 6, 4, offset);
-            intersectRectangle(ts, pts, origins[index], -Y/2, vel[index], Z, X, 1, 6, 5, offset);
-        }
-        else
-        {
-            ts[index*6 + 4] = -1;
-            ts[index*6 + 5] = -1;
+            ts[1] = t1;
+            pts[1] = origins + (vel * t1);
         }
     }
 }
 
-__global__ void intersectCylinder(Vec3<float> *origins, Vec3<float> *vel,
-                                  const float r, const float h,
-                                  const int N, float *ts, Vec3<float> *pts)
+__global__ void intersect(const int shapeKey, Vec3<float> *origins,
+                          Vec3<float> *vel, const float *shapeData,
+                          const int N,
+                          float *ts, Vec3<float> *pts)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    // This is done to prevent excess threads from interfering in the code.
     if (index < N)
     {
-        /* The offset variable is used to ensure only
-         * 2 intersection points are recorded.
-         */
-        int offset = 0;
-        /* The actual intersection calculations are carried out
-         * by these two helper functions.
-         */
-        intersectCylinderTopBottom(ts, pts, origins[index], vel[index], r, h, offset);
-        intersectCylinderSide(ts, pts, origins[index], vel[index], r, h, offset);
-    }
-}
-
-__global__ void intersectPyramid(Vec3<float> *origins, Vec3<float> *vel,
-                                 const float X, const float Y, const float H,
-                                 const int N, float *ts, Vec3<float> *pts)
-{
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    // This is done to prevent excess threads from interfering in the code.
-    if (index < N)
-    {
-        /* The offset variable is used to ensure only
-         * 2 intersection points are recorded.
-         */
-        int offset = 0;
-        /* If the neutron doesn't move in the Z-direction, it will
-         * never intersect the Pyramid's base. If it might intersect,
-         * the intersectRectangle function is used to determine any
-         * intersection point.
-         */
-        if (vel[index][2] != 0)
+        switch(shapeKey)
         {
-            intersectRectangle(ts, pts, origins[index], -H, vel[index], X, Y, 0, 5, 0, offset);
+            case 0:
+                intersectBox(origins[index], vel[index], shapeData,
+                             &(ts[6*index]), &(pts[2*index]));
+                break;
+            case 1:
+                intersectCylinder(origins[index], vel[index], shapeData,
+                                  &(ts[4*index]), &(pts[2*index]));
+                break;
+            case 2:
+                intersectPyramid(origins[index], vel[index], shapeData,
+                                 &(ts[5*index]), &(pts[2*index]));
+                break;
+            case 3:
+                intersectSphere(origins[index], vel[index], shapeData,
+                                &(ts[2*index]), &(pts[2*index]));
+                break;
+            default:
+                printf("Error: Invalid value for \"shapeKey\" (must be in range 0-3, inclusive).\nExiting GPU.\n");
+                asm("trap;");
         }
-        /* These calls to intersectTriangle determine if there are
-         * any intersections between the neutron and the triangular
-         * faces of the Pyramid.
-         */
-        intersectTriangle(ts, pts,
-                          origins[index],
-                          vel[index],
-                          Vec3<float>(0, 0, 0),
-                          Vec3<float>(X/2, Y/2, -H),
-                          Vec3<float>(X/2, -Y/2, -H),
-                          1, offset);
-        intersectTriangle(ts, pts,
-                          origins[index],
-                          vel[index],
-                          Vec3<float>(0, 0, 0),
-                          Vec3<float>(X/2, -Y/2, -H),
-                          Vec3<float>(-X/2, -Y/2, -H),
-                          2, offset);
-        intersectTriangle(ts, pts,
-                          origins[index],
-                          vel[index],
-                          Vec3<float>(0, 0, 0),
-                          Vec3<float>(-X/2, -Y/2, -H),
-                          Vec3<float>(-X/2, Y/2, -H),
-                          3, offset);
-        intersectTriangle(ts, pts,
-                          origins[index],
-                          vel[index],
-                          Vec3<float>(0, 0, 0),
-                          Vec3<float>(-X/2, Y/2, -H),
-                          Vec3<float>(X/2, Y/2, -H),
-                          4, offset);
-        __syncthreads();
     }
-}
-
-__global__ void intersectSphere(Vec3<float> *origins, Vec3<float> *vel,
-                                const float radius,
-                                const int N, float *ts, Vec3<float> *pts)
-{
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    // This is done to prevent excess threads from interfering in the code.
-    if (index < N)
-    {
-        /* Calculates the a, b, and c parameters needed for the
-         * quadratic formula. These parameters are defined by the
-         * equation that is developed by plugging the components
-         * of the ray equation for a neutron
-         * (<x,y,z> = <x0,y0,z0>+t*<vx,vy,vz>) into the equation of
-         * a Sphere.
-         */
-        float a = (vel[index] | vel[index]);
-        float b = 2*(origins[index] | vel[index]);
-        float c = (origins[index] | origins[index]);
-        c -= radius*radius;
-        /* The solveQuadratic function is used to calculate the
-         * two potential intersection times. If the function
-         * returns false, the neutron does not intersect, and the
-         * corresponding values in ts are set to -1.
-         */
-        float t0, t1;
-        if (!solveQuadratic(a, b, c, t0, t1))
-        {
-            ts[2*index] = -1;
-            ts[2*index + 1] = -1;
-            return;
-        }
-        /* If solveQuadratic returns true, the times are stored in 
-         * ts, and the intersection points are calculated and stored
-         * in pts.
-         */
-        else
-        {
-            if (t0 < 0)
-            {
-                ts[2*index] = -1;
-            }
-            else
-            {
-                ts[2*index] = t0;
-                pts[2*index] = origins[index] + (vel[index] * t0);
-            }
-            if (t1 < 0)
-            {
-                ts[2*index+1] = -1;
-            }
-            else
-            {
-                ts[2*index + 1] = t1;
-                pts[2*index + 1] = origins[index] + (vel[index] * t1);
-            }
-        }
-        __syncthreads();
-    }
+    __syncthreads();
 }

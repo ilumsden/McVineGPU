@@ -6,11 +6,16 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
+#include "Error.hpp"
 #include "IntersectKernels.hpp"
 #include "Ray.hpp"
 #include "SystemVars.hpp"
+
+extern std::unordered_map<std::string, int> interKeyDict;
 
 /* Abstract Shape is the parent interface for the primitive
  * solids defined in McVine.
@@ -19,7 +24,7 @@
  */
 struct AbstractShape
 {
-    AbstractShape() { type = "Shape"; }
+    AbstractShape(); 
 
     virtual ~AbstractShape() { ; }
 
@@ -47,6 +52,8 @@ struct AbstractShape
      * unnecessary.
      */
     std::string type;
+
+    float *data;
 };
 
 #endif

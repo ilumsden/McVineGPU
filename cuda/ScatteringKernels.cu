@@ -42,41 +42,65 @@ __global__ void calcScatteringSites(float *ts,
     }
 }
 
-__global__ void elasticScatteringKernel(const float *ray_time,
-                                        Vec3<float> *vel,
-                                        float *rands,
-                                        const int N)
+__device__ void isotropicScatteringKernel(//const float *ray_time,
+                                          Vec3<float> &vel,
+                                          float *rands)
+                                          //const int N)
+{
+    //int index = blockIdx.x * blockDim.x + threadIdx.x;
+    //if (index < N && ray_time[index] > 0)
+    //{
+    /* The z coordinate of the unit velocity vector is chosen
+     * at random and manipulated so that it falls between
+     * -1 and 1.
+     */
+    //float z = rands[2*index];
+    float z = rands[0];
+    z *= 2;
+    z -= 1;
+    /* The spherical coordinate `phi` is randomly chosen
+     * and manipulated so that it falls between 0 and 2*Pi.
+     */
+    //float phi = rands[2*index+1];
+    float phi = rands[1];
+    phi *= 2*PI;
+    /* Since z is based on a unit vector, theta is calculated
+     * using standard Cartesian-to-Spherical coordinate conversion
+     * with r = 1.
+     */
+    float theta = acosf(z);
+    /* Since the scattering is elastic, the post-scattering velocity
+     * must have the same magnitude as the pre-scattering velocity.
+     * As a result, the pre-scattering magnitude must be recorded.
+     */
+    //float r = vel[index].length();        
+    float r = vel.length();        
+    /* The post-scattering velocity is calculated using standard
+     * Spherical-to-Cartesian conversion.
+     */
+    //vel[index][0] = r * cosf(phi) * sinf(theta);
+    //vel[index][1] = r * sinf(phi) * sinf(theta);
+    //vel[index][2] = r * z;
+    vel[0] = r * cosf(phi) * sinf(theta);
+    vel[1] = r * sinf(phi) * sinf(theta);
+    vel[2] = r * z;
+    //}
+}
+
+__global__ void scatter(const int scatterKey, const float *ray_time,
+                        Vec3<float> *vel, float *rands, const int N)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < N && ray_time[index] > 0)
     {
-        /* The z coordinate of the unit velocity vector is chosen
-         * at random and manipulated so that it falls between
-         * -1 and 1.
-         */
-        float z = rands[2*index];
-        z *= 2;
-        z -= 1;
-        /* The spherical coordinate `phi` is randomly chosen
-         * and manipulated so that it falls between 0 and 2*Pi.
-         */
-        float phi = rands[2*index+1];
-        phi *= 2*PI;
-        /* Since z is based on a unit vector, theta is calculated
-         * using standard Cartesian-to-Spherical coordinate conversion
-         * with r = 1.
-         */
-        float theta = acosf(z);
-        /* Since the scattering is elastic, the post-scattering velocity
-         * must have the same magnitude as the pre-scattering velocity.
-         * As a result, the pre-scattering magnitude must be recorded.
-         */
-        float r = vel[index].length();        
-        /* The post-scattering velocity is calculated using standard
-         * Spherical-to-Cartesian conversion.
-         */
-        vel[index][0] = r * cosf(phi) * sinf(theta);
-        vel[index][1] = r * sinf(phi) * sinf(theta);
-        vel[index][2] = r * z;
+        switch(scatterKey)
+        {
+            case 0:
+                isotropicScatteringKernel(vel[index], &(rands[2*index]));
+                break;
+            default:
+                printf("Error: Invalid value for \"scatterKey\" (currently must be 0).\nExiting GPU.\n");
+                asm("trap;");
+        }
     }
 }
