@@ -37,13 +37,19 @@ struct AbstractShape
      * by-reference to store the intersection times and
      * coordinates (int_times and int_coords).
      */
-    virtual void exteriorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
-                                   const int N, const int blockSize, const int numBlocks,
+    virtual void exteriorIntersect(std::vector<Vec3<float>*> &d_origins, 
+                                   std::vector<Vec3<float>*> &d_vel,
+                                   const int blockSize, 
+                                   const std::vector<int> &numBlocks,
+                                   const std::vector<int> &steps,
                                    std::vector<float> &int_times,
                                    std::vector< Vec3<float> > &int_coords) = 0;
 
-    virtual void interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
-                                   const int N, const int blockSize, const int numBlocks,
+    virtual void interiorIntersect(std::vector<Vec3<float>*> &d_origins,  
+                                   std::vector<Vec3<float>*> &d_vel,
+                                   const int blockSize, 
+                                   const std::vector<int> &numBlocks,
+                                   const std::vector<int> &steps,
                                    std::vector<float> &int_times,
                                    std::vector< Vec3<float> > &int_coords) = 0;
  

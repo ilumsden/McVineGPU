@@ -34,8 +34,11 @@ struct Pyramid : public AbstractShape
      * and times between the Pyramid object and the neutrons represented
      * by d_origins and d_vel when the neutrons start outside the Pyramid.
      */
-    virtual void exteriorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
-                                   const int N, const int blockSize, const int numBlocks,
+    virtual void exteriorIntersect(std::vector<Vec3<float>*> &d_origins, 
+                                   std::vector<Vec3<float>*> &d_vel,
+                                   const int blockSize, 
+                                   const std::vector<int> &numBlocks,
+                                   const std::vector<int> &steps,
                                    std::vector<float> &int_times, 
                                    std::vector< Vec3<float> > &int_coords) override;
 
@@ -43,8 +46,11 @@ struct Pyramid : public AbstractShape
      * and times between the Pyramid object and the neutrons represented
      * by d_origins and d_vel when the neutrons start inside the Pyramid.
      */
-    virtual void interiorIntersect(Vec3<float> *d_origins, Vec3<float> *d_vel,
-                                   const int N, const int blockSize, const int numBlocks,
+    virtual void interiorIntersect(std::vector<Vec3<float>*> &d_origins, 
+                                   std::vector<Vec3<float>*> &d_vel,
+                                   const int blockSize, 
+                                   const std::vector<int> &numBlocks,
+                                   const std::vector<int> &steps,
                                    std::vector<float> &int_times, 
                                    std::vector< Vec3<float> > &int_coords) override;
 };
