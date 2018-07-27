@@ -121,8 +121,8 @@ void Box::exteriorIntersect(std::vector<Vec3<float>*> &d_origins,
                                                             d_intersect[i],
                                                             (steps[i+1]-steps[i]));
         CudaErrchkNoCode();
-        CudaErrchk( cudaMemcpyAsync(&(it[steps[i]]), simp_times[i], 2*(steps[i+1]-steps[i])*sizeof(float), cudaMemcpyDeviceToHost) );
-        CudaErrchk( cudaMemcpyAsync(&(ic[steps[i]]), d_intersect[i], 2*(steps[i+1]-steps[i])*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+        CudaErrchk( cudaMemcpyAsync(&(it[2*steps[i]]), simp_times[i], 2*(steps[i+1]-steps[i])*sizeof(float), cudaMemcpyDeviceToHost) );
+        CudaErrchk( cudaMemcpyAsync(&(ic[2*steps[i]]), d_intersect[i], 2*(steps[i+1]-steps[i])*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
     }
     /* The device memory allocated at the beginning of the function
      * is freed.

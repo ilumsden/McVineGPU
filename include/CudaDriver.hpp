@@ -5,12 +5,12 @@
 #include <vector>
 
 #include "Box.hpp"
-#include "Cylinder.hpp"
+//#include "Cylinder.hpp"
 #include "Error.hpp"
-#include "Pyramid.hpp"
+//#include "Pyramid.hpp"
 #include "Ray.hpp"
 #include "ScatteringKernels.hpp"
-#include "Sphere.hpp"
+//#include "Sphere.hpp"
 #include "SystemVars.hpp"
 
 /* This class controlls the execution of CUDA kernels.
@@ -91,7 +91,7 @@ class CudaDriver
         int blockSize;
         int nGpu;
         std::vector<int> steps;
-        std::vector<int> blockNums;
+        std::vector<int> numBlocks;
 };
 
 #endif

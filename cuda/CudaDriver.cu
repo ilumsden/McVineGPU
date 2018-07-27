@@ -37,10 +37,10 @@ CudaDriver::CudaDriver(std::vector< std::shared_ptr<Ray> > &rays,
             steps[j]++;
         }
     }
-    blockNums.resize(nGpu);
+    numBlocks.resize(nGpu);
     for (int i = 0; i < (int)(steps.size())-1; i++)
     {
-        blockNums[i] = ((steps[i+1] - steps[i]) + blockSize - 1) / blockSize;
+        numBlocks[i] = ((steps[i+1] - steps[i]) + blockSize - 1) / blockSize;
     }
     d_origins.resize(nGpu);
     d_vel.resize(nGpu);
@@ -222,10 +222,16 @@ void CudaDriver::handleExteriorIntersect(std::vector<float> &host_time,
     /* Calls the shape's intersect function.
      * Inheritance is used to choose the correct algorithm for intersection.
      */
-    b->exteriorIntersect(d_origins, d_vel, N, blockSize, numBlocks, host_time, int_coords);
+    //b->exteriorIntersect(d_origins, d_vel, N, blockSize, numBlocks, host_time, int_coords);
+    b->exteriorIntersect(d_origins, d_vel, blockSize, numBlocks, steps, host_time, int_coords);
     // Opens a file stream and prints the relevant data to time.txt
     // NOTE: this is for debugging purposes only. This will be removed later.
 #if defined(DEBUG) || defined(PRINT1)
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaDeviceSynchronize() );
+    }
     std::fstream fout;
     fout.open("time.txt", std::ios::out);
     if (!fout.is_open())
@@ -305,7 +311,7 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     {
         CudaErrchk( cudaSetDevice(i) );
         CudaErrchk( cudaMalloc(&(pos[i]), (steps[i+1]-steps[i])*sizeof(Vec3<float>)) );
-        initArray< Vec3<float> ><<<blockNums[i], blockSize>>>(pos[i], (steps[i+1]-steps[i]), Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX));
+        initArray< Vec3<float> ><<<numBlocks[i], blockSize>>>(pos[i], (steps[i+1]-steps[i]), Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX));
         CudaErrchkNoCode();
     }
     /* `scat_times` is a device_side array that stores the times at
@@ -321,7 +327,7 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     {
         CudaErrchk( cudaSetDevice(i) );
         CudaErrchk( cudaMalloc(&(scat_times[i]), (steps[i+1]-steps[i])*sizeof(float)) );
-        initArray< Vec3<float> ><<<blockNums[i], blockSize>>>(scat_times[i], (steps[i+1]-steps[i]), -5);
+        initArray< Vec3<float> ><<<numBlocks[i], blockSize>>>(scat_times[i], (steps[i+1]-steps[i]), -5);
         CudaErrchkNoCode();
     }
     /*curandGenerator_t gen;
@@ -342,6 +348,14 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
         CuRandErrchk( curandGenerateUniform(gen, d_randnums[i], (steps[i+1]-steps[i])) );
         CuRandErrchk( curandDestroyGenerator(gen) );
     }
+    std::vector<Vec3<float>*> ic;
+    ic.resize(nGpu);
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaMalloc(&(ic[i]), 2*(steps[i+1]-steps[i])*sizeof(Vec3<float>)) );
+        CudaErrchk( cudaMemcpy(ic[i], &(int_coords.data()[2*steps[i]]), 2*(steps[i+1]-steps[i])*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+    }
     // Calls the kernel for determining the scattering sites for the neutrons
     //calcScatteringSites<<<numBlocks, blockSize>>>(ts, d_origins, d_vel, pos, scat_times, d_randnums, N);
     /* Propagates the neutrons to their scattering sites.
@@ -355,20 +369,45 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
      * coordinates between the neutron and scattering body, as calculated
      * in the handleIntersect function.
      */
-    Vec3<float> *ic;
+    /*Vec3<float> *ic;
     CudaErrchk( cudaMalloc(&ic, 2*N*sizeof(Vec3<float>)) );
-    CudaErrchk( cudaMemcpy(ic, int_coords.data(), 2*N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+    CudaErrchk( cudaMemcpy(ic, int_coords.data(), 2*N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );*/
     /* Updates the probability attribute of the neutrons to account
      * for the absorption that occurs as a neutron travels through the
      * scattering body to the scattering site.
      */
-    updateProbability<<<numBlocks, blockSize>>>(d_probs, d_origins, ic, 1, 2, atten, N);
+    /*updateProbability<<<numBlocks, blockSize>>>(d_probs, d_origins, ic, 1, 2, atten, N);
     CudaErrchkNoCode();
     // Updates the host-side arrays for the edited neutron data.
     CudaErrchk( cudaMemcpy(origins, d_origins, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
     CudaErrchk( cudaMemcpy(times, d_times, N*sizeof(float), cudaMemcpyDeviceToHost) );
-    CudaErrchk( cudaMemcpy(probs, d_probs, N*sizeof(float), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaMemcpy(probs, d_probs, N*sizeof(float), cudaMemcpyDeviceToHost) );*/
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        calcScatteringSites<<<numBlocks[i], blockSize>>>(ts[i],
+                                                         d_origins[i],
+                                                         d_times[i],
+                                                         pos[i], scat_times[i],
+                                                         d_randnums[i],
+                                                         (steps[i+1]-steps[i]));
+        propagate<<<numBlocks[i], blockSize>>>(d_origins[i], d_times[i],
+                                               pos[i], scat_times[i],
+                                               (steps[i+1]-steps[i]));
+        updateProbability<<<numBlocks[i], blockSize>>>(d_probs[i], d_origins[i],
+                                                       ic[i], 1, 2, atten,
+                                                       (steps[i+1]-steps[i]));
+        CudaErrchkNoCode();
+        CudaErrchk( cudaMemcpyAsync(&(origins[sites[i]]), d_origins[i], (steps[i+1]-steps[i])*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+        CudaErrchk( cudaMemcpyAsync(&(times[sites[i]]), d_times[i], (steps[i+1]-steps[i])*sizeof(float), cudaMemcpyDeviceToHost) );
+        CudaErrchk( cudaMemcpyAsync(&(probs[sites[i]]), d_probs[i], (steps[i+1]-steps[i])*sizeof(float), cudaMemcpyDeviceToHost) );
+    }
 #if defined(DEBUG) || defined(PRINT2)
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaDeviceSynchronize() );
+    }
     std::fstream fout;
     fout.open("scatteringSites.txt", std::ios::out);
     if (!fout.is_open())
@@ -405,10 +444,14 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     fout.close();
 #endif
     // Frees the device memory allocated above.
-    CudaErrchk( cudaFree(ts) );
-    CudaErrchk( cudaFree(ic) );
-    CudaErrchk( cudaFree(pos) );
-    CudaErrchk( cudaFree(d_randnums) );
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaFree(ts[i]) );
+        CudaErrchk( cudaFree(ic[i]) );
+        CudaErrchk( cudaFree(pos[i]) );
+        CudaErrchk( cudaFree(d_randnums[i]) );
+    }
     return;
 }
 
