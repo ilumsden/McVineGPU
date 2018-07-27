@@ -42,6 +42,10 @@ CudaDriver::CudaDriver(std::vector< std::shared_ptr<Ray> > &rays,
     {
         blockNums[i] = ((steps[i+1] - steps[i]) + blockSize - 1) / blockSize;
     }
+    d_origins.resize(nGpu);
+    d_vel.resize(nGpu);
+    d_times.resize(nGpu);
+    d_probs.resize(nGpu);
     // Calculates the CUDA launch parameters using bS
     /*blockSize = bS;
     numBlocks = (N + blockSize - 1) / blockSize;
