@@ -1,5 +1,4 @@
-cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
-
+cmake_minimum_required(VERSION 3.8 FATAL_ERROR) 
 project(McVineGPU LANGUAGES C CXX CUDA)
 
 option(BUILD_TESTING "Build tests." OFF)
@@ -7,6 +6,13 @@ option(BUILD_TESTING "Build tests." OFF)
 file(GLOB cpu_source_files "${CMAKE_SOURCE_DIR}/src/*.cpp")
 file(GLOB gpu_source_files "${CMAKE_SOURCE_DIR}/cuda/*.cu")
 file(GLOB gpu_headers "${CMAKE_SOURCE_DIR}/include/*.hpp")
+
+# This is for testing multi-GPU on Box only
+# As multi-GPU support is added for more objects, remove the corresponding
+# files from these commands.
+list(REMOVE_ITEM gpu_source_files "${CMAKE_SOURCE_DIR}/cuda/Cylinder.cu" "${CMAKE_SOURCE_DIR}/cuda/Pyramid.cu" "${CMAKE_SOURCE_DIR}/cuda/Sphere.cu")
+list(REMVOE_ITEM gpu_headers "${CMAKE_SOURCE_DIR}/include/Cylinder.hpp" "${CMAKE_SOURCE_DIR}/include/Pyramid.hpp" "${CMAKE_SOURCE_DIR}/include/Sphere.hpp")
+
 if(BUILD_TESTING)
     file(GLOB test_cuda_src "${CMAKE_SOURCE_DIR}/test/*.cu")
     file(GLOB test_cuda_headers "${CMAKE_SOURCE_DIR}/test/*.hpp")
