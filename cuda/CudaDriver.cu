@@ -466,27 +466,53 @@ void CudaDriver::findScatteringVels()
 #if defined(DEBUG) || defined(RANDTEST)
     std::vector<float> thetas, phis;
 #endif
-    curandGenerator_t gen;
+    /*curandGenerator_t gen;
     float *d_randnums;
     CudaErrchk( cudaMalloc(&d_randnums, 2*N*sizeof(float)) );
     CuRandErrchk( curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT) );
     CuRandErrchk( curandSetPseudoRandomGeneratorSeed(gen, time(NULL)) );
-    CuRandErrchk( curandGenerateUniform(gen, d_randnums, 2*N) );
+    CuRandErrchk( curandGenerateUniform(gen, d_randnums, 2*N) );*/
+    std::vector<float*> d_randnums;
+    d_randnums.resize(nGpu);
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaMalloc(&(d_randnums[i]), 2*(steps[i+1]-steps[i])*sizeof(float)) );
+        curandGenerator_t gen;
+        CuRandErrchk( curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT) );
+        CuRandErrchk( curandSetPseudoRandomGeneratorSeed(gen, time(NULL)) );
+        CuRandErrchk( curandGenerateUniform(gen, d_randnums[i], 2*(steps[i+1]-steps[i])) );
+        CuRandErrchk( curandDestroyGenerator(gen) );
+    }
     /* Calls the elasticScatteringKernel function to update the neutron
      * velocities post-elastic scattering.
      */
     /*isotropicScatteringKernel<<<numBlocks, blockSize>>>(d_times,
                                                         d_vel,
                                                         d_randnums, N);*/
-    scatter<<<numBlocks, blockSize>>>(0, d_times, d_vel, d_randnums, N);
-    CudaErrchkNoCode();
+    //scatter<<<numBlocks, blockSize>>>(0, d_times, d_vel, d_randnums, N);
+    //CudaErrchkNoCode();
     /* Copies the new neutron velocities into the host-side neutron
      * velocity array.
      */
-    CudaErrchk( cudaMemcpy(vel, d_vel, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+    //CudaErrchk( cudaMemcpy(vel, d_vel, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        scatter<<<numBlocks[i], blockSize>>>(0, d_times[i], d_vel[i],
+                                             d_randnums[i],
+                                             (sites[i+1]-sites[i]));
+        CudaErrchkNoCode();
+        CudaErrchk( cudaMemcpyAsync(&(vel[sites[i]]), d_vel[i], (sites[i+1]-sites[i])*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+    }
     // Opens a file stream and prints the 
     // relevant data to scatteringVels.txt
 #if defined(DEBUG) || defined(PRINT3)
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        Cudaerrchk( cudaDeviceSynchronize() );
+    }
     std::fstream fout;
     fout.open("scatteringVels.txt", std::ios::out);
     if (!fout.is_open())
@@ -534,8 +560,12 @@ void CudaDriver::findScatteringVels()
     f1.close();
     f2.close();
 #endif
-    CuRandErrchk( curandDestroyGenerator(gen) );
-    CudaErrchk( cudaFree(d_randnums) );
+    //CuRandErrchk( curandDestroyGenerator(gen) );
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaFree(d_randnums) );
+    }
 }
 
 void CudaDriver::handleInteriorIntersect()
@@ -548,19 +578,54 @@ void CudaDriver::handleInteriorIntersect()
 #endif
     std::vector<float> int_times;
     std::vector< Vec3<float> > int_coords;
-    b->interiorIntersect(d_origins, d_vel, N, blockSize, numBlocks, int_times, int_coords); 
-    float *exit_times;
+    //b->interiorIntersect(d_origins, d_vel, N, blockSize, numBlocks, int_times, int_coords); 
+    b->interiorIntersect(d_origins, d_vel, blockSize, numBlocks, steps, int_times, int_coords); 
+    /*float *exit_times;
     CudaErrchk( cudaMalloc(&exit_times, N*sizeof(float)) );
-    CudaErrchk( cudaMemcpy(exit_times, int_times.data(), N*sizeof(float), cudaMemcpyHostToDevice) );
-    Vec3<float> *exit_coords;
+    CudaErrchk( cudaMemcpy(exit_times, int_times.data(), N*sizeof(float), cudaMemcpyHostToDevice) );*/
+    std::vector<float*> exit_times;
+    exit_times.resize(nGpu);
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaMalloc(&(exit_times[i]), (sites[i+1]-sites[i])*sizeof(float)) );
+        CudaErrchk( cudaMemcpyAsync(exit_times[i], &(int_times.data()[sites[i]]), (sites[i+1]-sites[i])*sizeof(float), cudaMemcpyHostToDevice) );
+    }
+    /*Vec3<float> *exit_coords;
     CudaErrchk( cudaMalloc(&exit_coords, N*sizeof(Vec3<float>)) );
-    CudaErrchk( cudaMemcpy(exit_coords, int_coords.data(), N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-    updateProbability<<<numBlocks, blockSize>>>(d_probs, exit_coords, d_origins, 1, 1, atten, N);
+    CudaErrchk( cudaMemcpy(exit_coords, int_coords.data(), N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );*/
+    std::vector<Vec3<float>*> exit_coords;
+    exit_coords.resize(nGpu);
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaMalloc(&(exit_coords[i]), (sites[i+1]-sites[i])*sizeof(Vec3<float>)) );
+        CudaErrchk( cudaMemcpyAsync(exit_coords[i], &(int_coords.data()[sites[i]]), (sites[i+1]-sites[i])*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+    }
+    /*updateProbability<<<numBlocks, blockSize>>>(d_probs, exit_coords, d_origins, 1, 1, atten, N);
     propagate<<<numBlocks, blockSize>>>(d_origins, d_times, exit_coords, exit_times, N);
     CudaErrchk( cudaMemcpy(origins, d_origins, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
     CudaErrchk( cudaMemcpy(times, d_times, N*sizeof(float), cudaMemcpyDeviceToHost) );
-    CudaErrchk( cudaMemcpy(probs, d_probs, N*sizeof(float), cudaMemcpyDeviceToHost) );
+    CudaErrchk( cudaMemcpy(probs, d_probs, N*sizeof(float), cudaMemcpyDeviceToHost) );*/
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        updateProbability<<<numBlocks[i], blockSize>>>(d_probs[i], exit_coords[i],
+                                                       d_origins[i], 1, 1, atten,
+                                                       (sites[i+1]-sites[i]));
+        propagate<<<numBlocks[i], blockSize>>>(d_origins[i], d_times[i],
+                                               exit_coords[i], exit_times[i],
+                                               (sites[i+1]-sites[i]));
+        CudaErrchk( cudaMemcpyAsync(&(origins[sites[i]]), d_origins[i], (sites[i+1]-sites[i])*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+        CudaErrchk( cudaMemcpyAsync(&(times[sites[i]]), d_times[i], (sites[i+1]-sites[i])*sizeof(float), cudaMemcpyDeviceToHost) );
+        CudaErrchk( cudaMemcpyAsync(&(probs[sites[i]]), d_probs[i], (sites[i+1]-sites[i])*sizeof(float), cudaMemcpyDeviceToHost) );
+    }
 #if defined(DEBUG) || defined(PRINT4)
+    for (int i = 0; i < nGpu, i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaDeviceSynchronize() );
+    }
     std::fstream fout;
     fout.open("exit.txt", std::ios::out);
     if (!fout.is_open())
@@ -595,8 +660,12 @@ void CudaDriver::handleInteriorIntersect()
     }
     fout.close();
 #endif
-    CudaErrchk( cudaFree(exit_times) );
-    CudaErrchk( cudaFree(exit_coords) );
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaFree(exit_times[i]) );
+        CudaErrchk( cudaFree(exit_coords[i]) );
+    }
 }
 
 void CudaDriver::runCalculations()
