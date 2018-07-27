@@ -77,8 +77,10 @@ class CudaDriver
         Vec3<float> *origins, *vel;
         float *times, *probs;
         // These members store the device-side copies of the neutron data.
-        Vec3<float> *d_origins, *d_vel;
-        float *d_times, *d_probs;
+        std::vector<Vec3<float>*> d_origins, d_vel;
+        std::vector<float*> d_times, d_probs;
+        //Vec3<float> *d_origins, *d_vel;
+        //float *d_times, *d_probs;
         // This member stores a pointer to the vector of rays.
         std::vector< std::shared_ptr<Ray> > *rayptr;
         // This member stores a pointer to the scattering body.
@@ -86,7 +88,10 @@ class CudaDriver
         // This int stores the number of neutrons (size of the above data).
         int N;
         // These are the CUDA launch parameters. 
-        int blockSize, numBlocks;
+        int blockSize;
+        int nGpu;
+        std::vector<int> steps;
+        std::vector<int> blockNums;
 };
 
 #endif

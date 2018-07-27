@@ -22,22 +22,42 @@ CudaDriver::CudaDriver(std::vector< std::shared_ptr<Ray> > &rays,
 { 
     N = (int)(rays.size());
     b = shape;
+    CudaErrchk( cudaGetDeviceCount(&nGpu) );
+    int jump = N / nGpu;
+    int rem = N % nGpu;
+    for (int i = 0; i <= nGpu; i++)
+    {
+        steps.push_back(i * jump);
+    }
+    for (int i = 1; i <= rem; i++)
+    {
+        steps[i]++;
+        for (int j = i+1; j < (int)(steps.size()); j++)
+        {
+            steps[j]++;
+        }
+    }
+    blockNums.resize(nGpu);
+    for (int i = 0; i < (int)(steps.size())-1; i++)
+    {
+        blockNums[i] = ((steps[i+1] - steps[i]) + blockSize - 1) / blockSize;
+    }
     // Calculates the CUDA launch parameters using bS
-    blockSize = bS;
+    /*blockSize = bS;
     numBlocks = (N + blockSize - 1) / blockSize;
-    printf("CUDA Launch Params: %i, %i\n", numBlocks, blockSize);
+    printf("CUDA Launch Params: %i, %i\n", numBlocks, blockSize);*/
     /* Allocates both host and device memory for the float arrays that
      * will be used to store the data passed to the CUDA functions.
      */
     rayptr = &rays;
     origins = (Vec3<float>*)malloc(N*sizeof(Vec3<float>));
-    CudaErrchk( cudaMalloc(&d_origins, N*sizeof(Vec3<float>)) );
+    //CudaErrchk( cudaMalloc(&d_origins, N*sizeof(Vec3<float>)) );
     vel = (Vec3<float>*)malloc(N*sizeof(Vec3<float>));
-    CudaErrchk( cudaMalloc(&d_vel, N*sizeof(Vec3<float>)) );
+    //CudaErrchk( cudaMalloc(&d_vel, N*sizeof(Vec3<float>)) );
     times = (float*)malloc(N*sizeof(float));
-    CudaErrchk( cudaMalloc(&d_times, N*sizeof(float)) );
+    //CudaErrchk( cudaMalloc(&d_times, N*sizeof(float)) );
     probs = (float*)malloc(N*sizeof(float));
-    CudaErrchk( cudaMalloc(&d_probs, N*sizeof(float)) );
+    //CudaErrchk( cudaMalloc(&d_probs, N*sizeof(float)) );
     // Copies the data from the rays to the host arrays.
     int c = 0;
     for (auto ray : rays)
@@ -48,11 +68,23 @@ CudaDriver::CudaDriver(std::vector< std::shared_ptr<Ray> > &rays,
         probs[c] = ray->prob;
         c++;
     }
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaMalloc(&(d_origins[i]), (steps[i+1]-steps[i])*sizeof(Vec3<float>)) );
+        CudaErrchk( cudaMemcpy(d_origins[i], &(origins[steps[i]]), (steps[i+1]-steps[i])*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+        CudaErrchk( cudaMalloc(&(d_vel[i]), (steps[i+1]-steps[i])*sizeof(Vec3<float>)) );
+        CudaErrchk( cudaMemcpy(d_vel[i], &(vel[steps[i]]), (steps[i+1]-steps[i])*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+        CudaErrchk( cudaMalloc(&(d_times[i]), (steps[i+1]-steps[i])*sizeof(float)) );
+        CudaErrchk( cudaMemcpy(d_times[i], &(times[steps[i]]), (steps[i+1]-steps[i])*sizeof(float), cudaMemcpyHostToDevice) );
+        CudaErrchk( cudaMalloc(&(d_probs[i]), (steps[i+1]-steps[i])*sizeof(float)) );
+        CudaErrchk( cudaMemcpy(d_probs[i], &(probs[steps[i]]), (steps[i+1]-steps[i])*sizeof(float), cudaMemcpyHostToDevice) );
+    }
     // Copies the data from the host arrays to the device arrays.
-    CudaErrchk( cudaMemcpy(d_origins, origins, N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-    CudaErrchk( cudaMemcpy(d_vel, vel, N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-    CudaErrchk( cudaMemcpy(d_times, times, N*sizeof(float), cudaMemcpyHostToDevice) );
-    CudaErrchk( cudaMemcpy(d_probs, probs, N*sizeof(float), cudaMemcpyHostToDevice) );
+    //CudaErrchk( cudaMemcpy(d_origins, origins, N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+    //CudaErrchk( cudaMemcpy(d_vel, vel, N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+    //CudaErrchk( cudaMemcpy(d_times, times, N*sizeof(float), cudaMemcpyHostToDevice) );
+    //CudaErrchk( cudaMemcpy(d_probs, probs, N*sizeof(float), cudaMemcpyHostToDevice) );
 }
 
 CudaDriver::~CudaDriver()
@@ -244,39 +276,77 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     /* Allocates memory for a device-side array that stores the
      * data passed in from `int_times`.
      */
-    float *ts;
+    /*float *ts;
     CudaErrchk( cudaMalloc(&ts, 2*N*sizeof(float)) );
-    CudaErrchk( cudaMemcpy(ts, int_times.data(), 2*N*sizeof(float), cudaMemcpyHostToDevice) );
+    CudaErrchk( cudaMemcpy(ts, int_times.data(), 2*N*sizeof(float), cudaMemcpyHostToDevice) );*/
+    std::vector<float*> ts;
+    ts.resize(nGpu);
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaMalloc(&(ts[i]), 2*(steps[i+1]-steps[i])*sizeof(float)) );
+        CudaErrchk( cudaMemcpy(ts[i], &(int_times.data()[steps[i]]), 2*(steps[i+1]-steps[i])*sizeof(float), cudaMemcpyHostToDevice) );
+    }
     /* `pos` is a device-side array that stores the coordinates of the
      * scattering sites for the neutrons.
      * The default value of its data is FLT_MAX.
      */
-    Vec3<float> *pos;
+    /*Vec3<float> *pos;
     CudaErrchk( cudaMalloc(&pos, N*sizeof(Vec3<float>)) );
     initArray< Vec3<float> ><<<numBlocks, blockSize>>>(pos, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
-    CudaErrchkNoCode();
+    CudaErrchkNoCode();*/
+    std::vector<Vec3<float>*> pos;
+    pos.resize(nGpu);
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaMalloc(&(pos[i]), (steps[i+1]-steps[i])*sizeof(Vec3<float>)) );
+        initArray< Vec3<float> ><<<blockNums[i], blockSize>>>(pos[i], (steps[i+1]-steps[i]), Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX));
+        CudaErrchkNoCode();
+    }
     /* `scat_times` is a device_side array that stores the times at
      * which the neutrons reach their scattering sites.
      * The default value of its data is -5.
      */
-    float *scat_times;
+    /*float *scat_times;
     CudaErrchk( cudaMalloc(&scat_times, N*sizeof(float)) );
-    initArray<float><<<numBlocks, blockSize>>>(scat_times, N, -5);
-    curandGenerator_t gen;
+    initArray<float><<<numBlocks, blockSize>>>(scat_times, N, -5);*/
+    std::vector<Vec3<float>*> scat_times;
+    pos.resize(nGpu);
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaMalloc(&(scat_times[i]), (steps[i+1]-steps[i])*sizeof(float)) );
+        initArray< Vec3<float> ><<<blockNums[i], blockSize>>>(scat_times[i], (steps[i+1]-steps[i]), -5);
+        CudaErrchkNoCode();
+    }
+    /*curandGenerator_t gen;
     float *d_randnums;
     CudaErrchk( cudaMalloc(&d_randnums, N*sizeof(float)) );
     CuRandErrchk( curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT) );
     CuRandErrchk( curandSetPseudoRandomGeneratorSeed(gen, time(NULL)) );
-    CuRandErrchk( curandGenerateUniform(gen, d_randnums, N) );
+    CuRandErrchk( curandGenerateUniform(gen, d_randnums, N) );*/
+    std::vector<float*> d_randnums;
+    d_randnums.resize(nGpu);
+    for (int i = 0; i < nGpu; i++)
+    {
+        CudaErrchk( cudaSetDevice(i) );
+        CudaErrchk( cudaMalloc(&(d_randnums[i]), (steps[i+1]-steps[i])*sizeof(float)) );
+        curandGenerator_t gen;
+        CuRandErrchk( curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT) );
+        CuRandErrchk( curandSetPseudoRandomGeneratorSeed(gen, time(NULL)) );
+        CuRandErrchk( curandGenerateUniform(gen, d_randnums[i], (steps[i+1]-steps[i])) );
+        CuRandErrchk( curandDestroyGenerator(gen) );
+    }
     // Calls the kernel for determining the scattering sites for the neutrons
-    calcScatteringSites<<<numBlocks, blockSize>>>(ts, d_origins, d_vel, pos, scat_times, d_randnums, N);
+    //calcScatteringSites<<<numBlocks, blockSize>>>(ts, d_origins, d_vel, pos, scat_times, d_randnums, N);
     /* Propagates the neutrons to their scattering sites.
      * In other words, the scattering coordinates and times are copied
      * into the device arrays that store the neutrons' origins and times
      * (d_origins and d_times respectively).
      */
-    propagate<<<numBlocks, blockSize>>>(d_origins, d_times, pos, scat_times, N);
-    CudaErrchkNoCode();
+    //propagate<<<numBlocks, blockSize>>>(d_origins, d_times, pos, scat_times, N);
+    //CudaErrchkNoCode();
     /* `ic` is a device-side array that stores the intersection
      * coordinates between the neutron and scattering body, as calculated
      * in the handleIntersect function.
@@ -330,7 +400,6 @@ void CudaDriver::findScatteringSites(const std::vector<float> &int_times,
     }
     fout.close();
 #endif
-    CuRandErrchk( curandDestroyGenerator(gen) );
     // Frees the device memory allocated above.
     CudaErrchk( cudaFree(ts) );
     CudaErrchk( cudaFree(ic) );
