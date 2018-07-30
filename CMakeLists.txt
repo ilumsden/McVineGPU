@@ -11,7 +11,7 @@ file(GLOB gpu_headers "${CMAKE_SOURCE_DIR}/include/*.hpp")
 # As multi-GPU support is added for more objects, remove the corresponding
 # files from these commands.
 list(REMOVE_ITEM gpu_source_files "${CMAKE_SOURCE_DIR}/cuda/Cylinder.cu" "${CMAKE_SOURCE_DIR}/cuda/Pyramid.cu" "${CMAKE_SOURCE_DIR}/cuda/Sphere.cu")
-list(REMVOE_ITEM gpu_headers "${CMAKE_SOURCE_DIR}/include/Cylinder.hpp" "${CMAKE_SOURCE_DIR}/include/Pyramid.hpp" "${CMAKE_SOURCE_DIR}/include/Sphere.hpp")
+list(REMOVE_ITEM gpu_headers "${CMAKE_SOURCE_DIR}/include/Cylinder.hpp" "${CMAKE_SOURCE_DIR}/include/Pyramid.hpp" "${CMAKE_SOURCE_DIR}/include/Sphere.hpp")
 
 if(BUILD_TESTING)
     file(GLOB test_cuda_src "${CMAKE_SOURCE_DIR}/test/*.cu")

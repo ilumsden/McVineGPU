@@ -70,9 +70,9 @@ int main(int argc, char **argv)
      * each primative.
      */
     std::shared_ptr<AbstractShape> b = std::make_shared<Box>(0.002, 0.05, 0.1);
-    //std::shared_ptr<AbstractShape> b = std::make_shared<Cylinder>(0.05, 0.1);
+    //std::shared_ptr<AbstractShape> b = std::make_shared<Cylinder>(0.005, 0.1);
     //std::shared_ptr<AbstractShape> b = std::make_shared<Pyramid>(0.002, 0.05, 0.1);
-    //std::shared_ptr<AbstractShape> b = std::make_shared<Sphere>(0.1);
+    //std::shared_ptr<AbstractShape> b = std::make_shared<Sphere>(0.005);
     // The "rays" vector stores pointers to the rays representing neutrons.
     std::vector< std::shared_ptr<Ray> > rays;
     double x = -0.5; double y = 0; double z = 0;
@@ -84,6 +84,10 @@ int main(int argc, char **argv)
      */
     for (int i = 0; i < 100000000; i++)
     {
+        if (b->type == "Pyramid")
+        {
+            z = -0.05;
+        }
         printf("i = %i\n", i);
         rays.push_back(std::make_shared<Ray>(x, y, z, vx, vy, vz));
     }

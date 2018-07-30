@@ -46,8 +46,8 @@ struct Box : public AbstractShape
      * points and times between the Box object and the neutrons represented
      * by d_origins and d_vel when the neutrons start inside the Box.
      */
-    virtual void interiorIntersect(std::vector<Vec3<float>*> d_origins, 
-                                   std::vector<Vec3<float>*> d_vel,
+    virtual void interiorIntersect(std::vector<Vec3<float>*> &d_origins, 
+                                   std::vector<Vec3<float>*> &d_vel,
                                    const int blockSize, 
                                    const std::vector<int> &numBlocks,
                                    const std::vector<int> &steps,

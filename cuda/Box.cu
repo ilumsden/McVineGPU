@@ -44,7 +44,7 @@ void Box::exteriorIntersect(std::vector<Vec3<float>*> &d_origins,
     {
         CudaErrchk( cudaSetDevice(i) );
         CudaErrchk( cudaMalloc(&(d_intersect[i]), 2*(steps[i+1]-steps[i])*sizeof(Vec3<float>)) );
-        initArray< Vec3<float> ><<<numBlocks[i], blockSize>>>(d_intersect[i], 2*(steps[i+1]-steps[i]), Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX));
+        initArray< Vec3<float> ><<<numBlocks[i], blockSize>>>(d_intersect[i], 2*(steps[i+1]-steps[i]), Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
         CudaErrchkNoCode();
     }
     /* The device float array "simp_times" is allocated on device, and
@@ -73,8 +73,9 @@ void Box::exteriorIntersect(std::vector<Vec3<float>*> &d_origins,
     {
         CudaErrchk( cudaSetDevice(i) );
         CudaErrchk( cudaMalloc(&(d_data[i]), 3*sizeof(float)) );
-        CudaErrchk( cudaMemcpy(d_data[i], data, 3*sizeof(float), cudaMemcpyHostToDevice) );
+        CudaErrchk( cudaMemcpyAsync(d_data[i], data, 3*sizeof(float), cudaMemcpyHostToDevice) );
     }
+    int N = steps[steps.size()-1];
     // These vectors are resized to match the size of the arrays above.
     int_times.resize(2*N);
     int_coords.resize(2*N);
@@ -137,9 +138,11 @@ void Box::exteriorIntersect(std::vector<Vec3<float>*> &d_origins,
     }
 }
 
-void Box::interiorIntersect(Vec3<float> *d_origins,
-                            Vec3<float> *d_vel,
-                            const int N, const int blockSize, const int numBlocks,
+void Box::interiorIntersect(std::vector<Vec3<float>*> &d_origins,
+                            std::vector<Vec3<float>*> &d_vel,
+                            const int blockSize, 
+                            const std::vector<int> &numBlocks,
+                            const std::vector<int> &steps,
                             std::vector<float> &int_times,
                             std::vector< Vec3<float> > &int_coords)
 {
@@ -182,7 +185,7 @@ void Box::interiorIntersect(Vec3<float> *d_origins,
     {
         CudaErrchk( cudaSetDevice(i) );
         CudaErrchk( cudaMalloc(&(d_intersect[i]), 2*(steps[i+1]-steps[i])*sizeof(Vec3<float>)) );
-        initArray< Vec3<float> ><<<numBlocks[i], blockSize>>>(d_intersect[i], 2*(steps[i+1]-steps[i]), Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX));
+        initArray< Vec3<float> ><<<numBlocks[i], blockSize>>>(d_intersect[i], 2*(steps[i+1]-steps[i]), Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
         CudaErrchkNoCode();
     }
     /* The device float array "simp_times" is allocated on device, and
@@ -216,7 +219,7 @@ void Box::interiorIntersect(Vec3<float> *d_origins,
     {
         CudaErrchk( cudaSetDevice(i) );
         CudaErrchk( cudaMalloc(&(simp_int[i]), (steps[i+1]-steps[i])*sizeof(Vec3<float>)) );
-        initArray< Vec3<float> ><<<numBlocks[i], blockSize>>>(simp_int[i], (steps[i+1]-steps[i]), Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX));
+        initArray< Vec3<float> ><<<numBlocks[i], blockSize>>>(simp_int[i], (steps[i+1]-steps[i]), Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
         CudaErrchkNoCode();
     }
     /*float *d_data;
@@ -228,13 +231,14 @@ void Box::interiorIntersect(Vec3<float> *d_origins,
     {
         CudaErrchk( cudaSetDevice(i) );
         CudaErrchk( cudaMalloc(&(d_data[i]), 3*sizeof(float)) );
-        CudaErrchk( cudaMemcpy(d_data[i], data, 3*sizeof(float), cudaMemcpyHostToDevice) );
+        CudaErrchk( cudaMemcpyAsync(d_data[i], data, 3*sizeof(float), cudaMemcpyHostToDevice) );
     }
     // These vectors are resized to match the size of the arrays above.
+    int N = steps[steps.size()-1];
     int_times.resize(N);
     int_coords.resize(N);
     float *it = int_times.data();
-    Vec3<float> *ic = int_coord.data();
+    Vec3<float> *ic = int_coords.data();
     // The kernels are called to perform the intersection calculation.
     /*intersectBox<<<numBlocks, blockSize>>>(d_origins,
                                            d_vel,
@@ -271,7 +275,7 @@ void Box::interiorIntersect(Vec3<float> *d_origins,
                                                             (steps[i+1]-steps[i]),
                                                             6, 2, 1,
                                                             simp_times[i],
-                                                            simp_int[i];
+                                                            simp_int[i]);
         CudaErrchkNoCode();
         CudaErrchk( cudaMemcpyAsync(&(it[steps[i]]), simp_times[i], (steps[i+1]-steps[i])*sizeof(float), cudaMemcpyDeviceToHost) );
         CudaErrchk( cudaMemcpyAsync(&(ic[steps[i]]), simp_int[i], (steps[i+1]-steps[i])*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
