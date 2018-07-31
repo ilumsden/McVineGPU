@@ -13,6 +13,9 @@ if(BUILD_TESTING)
     file(GLOB test_drivers "${CMAKE_SOURCE_DIR}/test/*.cpp")
 endif()
 
+list(REMOVE_ITEM gpu_source_files "${CMAKE_SOURCE_DIR}/cuda/CudaDriver.cu")
+list(REMOVE_ITEM gpu_headers "${CMAKE_SOURCE_DIR}/include/CudaDriver.hpp")
+
 message(STATUS "CUDA include directories are ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
