@@ -12,7 +12,7 @@ struct Ray
     /* Constructor that explicitly sets the initial position,
      * but initializes the velocity with default values.
      */
-    Ray(double a, double b, double c)
+    Ray(float a, float b, float c)
     {
         origin[0] = a;
         origin[1] = b;
@@ -22,8 +22,8 @@ struct Ray
     }
 
     // Constructor that explicitly sets all data.
-    Ray(double a, double b, double c,
-        double va, double vb, double vc)
+    Ray(float a, float b, float c,
+        float va, float vb, float vc)
     {
         origin[0] = a; origin[1] = b; origin[2] = c;
         vel[0] = va; vel[1] = vb; vel[2] = vc;
@@ -31,32 +31,35 @@ struct Ray
         prob = 1;
     }
 
-    /* Same as the 6-double constructor, except this one also
+    /* Same as the 6-float constructor, except this one also
      * sets the time and probability.
      */
-    Ray(double a, double b, double c,
-        double va, double vb, double vc,
-        double time, double p)
+    Ray(float a, float b, float c,
+        float va, float vb, float vc,
+        float time, float p)
         : Ray(a, b, c, va, vb, vc)    
     { 
         t = time; 
         prob = p;
     }
 
+    Ray(Vec3<float> &a, Vec3<float> &b, float time, float p)
+    : Ray(a[0], a[1], a[2], b[0], b[1], b[2], time, p) { ; }
+
     // This function provides an easy mechanism to change the velocity values.
-    void setVelocities(double a, double b, double c)
+    void setVelocities(float a, float b, float c)
     {
         vel[0] = a; vel[1] = b; vel[2] = c;
     }
 
     // This function provides an easy mechanism to change the time value.
-    void setTime(double time) { t = time; }
+    void setTime(float time) { t = time; }
 
     // This function provides an easy mechanism to change the probability value.
-    void setProbability(double p) { prob = p; }
+    void setProbability(float p) { prob = p; }
 
     // This function updates position and time data.
-    void update(double a, double b, double c, double time)
+    void update(float a, float b, float c, float time)
     {
         origin[0] = a;
         origin[1] = b;
@@ -65,18 +68,18 @@ struct Ray
     }
 
     // This function is a wrapper of the setVelocities function.
-    void update(double va, double vb, double vc)
+    void update(float va, float vb, float vc)
     {
        setVelocities(va, vb, vc);
     }
 
     // This function is a wrapper of the setProbability function.
-    void update(double p) { setProbability(p); }
+    void update(float p) { setProbability(p); }
 
     // This function updates all the ray's data.
-    void update(double a, double b, double c,
-                double va, double vb, double vc,
-                double time, double p)
+    void update(float a, float b, float c,
+                float va, float vb, float vc,
+                float time, float p)
     {
         update(a, b, c, time);
         update(va, vb, vc);

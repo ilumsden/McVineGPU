@@ -28,7 +28,7 @@ namespace mcvine
                 std::vector< Vec3<float> > tmp;
                 tmp.resize(N);
                 Vec3<float> *ta = tmp.data();
-                memcpy(ta, vel, N*sizeof(Vec3<float>));
+                memcpy(ta, beam->vel, N*sizeof(Vec3<float>));
 #endif
 #if defined(DEBUG) || defined(RANDTEST)
                 std::vector<float> thetas, phis;
@@ -45,12 +45,12 @@ namespace mcvine
                 /*isotropicScatteringKernel<<<numBlocks, blockSize>>>(d_times,
                                                                     d_vel,
                                                                     d_randnums, N);*/
-                scatter<<<numBlocks, blockSize>>>(0, d_times, d_vel, d_randnums, N);
+                scatter<<<numBlocks, blockSize>>>(type, beam->d_times, beam->d_vel, d_randnums, N);
                 CudaErrchkNoCode();
                 /* Copies the new neutron velocities into the host-side neutron
                  * velocity array.
                  */
-                CudaErrchk( cudaMemcpy(vel, d_vel, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+                CudaErrchk( cudaMemcpy(beam->vel, beam->d_vel, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 // Opens a file stream and prints the 
                 // relevant data to scatteringVels.txt
 #if defined(DEBUG) || defined(PRINT3)
@@ -66,15 +66,15 @@ namespace mcvine
                     fout << "\n";
                     fout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
                          << tmp[i][0] << " " << tmp[i][1] << " " << tmp[i][2] << " || "
-                         << vel[i][0] << " " << vel[i][1] << " " << vel[i][2] << "\n";
+                         << beam->vel[i][0] << " " << beam->vel[i][1] << " " << vel[i][2] << "\n";
                 }
                 fout.close();
 #endif
 #if defined(DEBUG) || defined(RANDTEST)
                 for (int i = 0; i < N; i++)
                 {
-                    thetas.push_back(acos(vel[i][2] / vel[i].length()));
-                    phis.push_back(atan2(vel[i][1], vel[i][0]));
+                    thetas.push_back(acos(beam->vel[i][2] / beam->vel[i].length()));
+                    phis.push_back(atan2(beam->vel[i][1], beam->vel[i][0]));
                 }
                 std::sort(thetas.begin(), thetas.end());
                 std::sort(phis.begin(), phis.end());

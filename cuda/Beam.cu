@@ -10,6 +10,7 @@ namespace mcvine
         Beam::Beam(std::vector< std::shared_ptr<Ray> > &rays, int size, int bS)
         {
             blockSize = bS;
+            rayptr = &rays;
             if (rays.size() == 1)
             {
                 N = size;
@@ -95,6 +96,118 @@ namespace mcvine
             CudaErrchk( cudaFree(d_vel) );
             CudaErrchk( cudaFree(d_times) );
             CudaErrchk( cudaFree(d_probs) );
+        }
+
+        void Beam::printAllData(const std::string &fname)
+        {
+            /* If there is a file name provided (i.e. fname != std::string()),
+             * the C++ stdout stream (cout) is redirected to print to the
+             * desired file. Otherwise, all data is printed to stdout.
+             */
+            std::streambuf *coutbuf = std::cout.rdbuf();
+            std::fstream fout;
+            if (fname != std::string())
+            {
+                fout.open(fname.c_str(), std::ios::out);
+                if (!fout.is_open())
+                {
+                    std::cerr << fname << " cannot be openned.\n";
+                    exit(-2);
+                }
+                std::cout.rdbuf(fout.rdbuf());
+            }
+            // A generic buffer for separation purposes
+            std::string buf = "        ";
+            // Prints header info
+            std::cout << "Position" << " " << buf << " " << buf << " || "
+                      << "Velocity" << " " << buf << " " << buf << " || "
+                      << "  Time  " << " || " << "Probability" << "\n\n";
+            // Prints the data for each neutron
+            for (int i = 0; i < N; i++)
+            {
+                std::cout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
+                     << origins[i][0]
+                 << " " << origins[i][1]
+                 << " " << origins[i][2]
+                 << " || "
+                         << vel[i][0]
+                         << " " << vel[i][1]
+                         << " " << vel[i][2]
+                         << " || "
+                         << times[i]
+                         << " || "
+                         << probs[i]
+                         << "\n\n";
+            }
+            /* If cout was redirected, this "fixes" it so that it prints to
+             * stdout in the future. Otherwise, this does nothing.
+             */
+            std::cout.rdbuf(coutbuf);
+            // Closes the file stream if it was ever openned.
+            if (fname != std::string())
+            {
+                fout.close();
+            }
+        }
+
+        void Beam::updateRays()
+        {
+            if (rayptr->size() > 1)
+            {
+                if (rayptr->size() != N)
+                {
+                    printf("Warning: The vector of Rays used to create this Beam object has been altered.\n\nWould you like to empty the vector to allow its data to be updated? (y/n)\n");
+                    char neg = 'n';
+                    char pos = 'y';
+                    while (1)
+                    {
+                        int response = getchar();
+                        if (response == (int)(neg))
+                        {
+                            printf("Aborting updateRays\n");
+                            return;
+                        }
+                        else if (response == (int)(pos))
+                        {
+                            rayptr->clear();
+                            rayptr->resize(N);
+                            break;
+                        }
+                        else
+                        {
+                            printf("Unknown command. Would you like to continue? (y/n)\n");
+                        }
+                    }
+                }
+                for (int i = 0; i < N; i++)
+                {
+                    (*rayptr)[i]->update(origins[i], vel[i], times[i], probs[i]);
+                }
+            }
+            else
+            {
+                rayptr->clear();
+                for (int i = 0; i < N; i++)
+                {
+                    printf("This process might take a while.\n");
+                    rayptr->push_back(std::make_shared<Ray>(origins[i], vel[i], times[i], probs[i]));
+                }
+            }
+        }
+
+        std::ostream& operator<<(std::ostream &fout, const Beam &beam)
+        {
+            std::vector<float> data;
+            for (int i = 0; i < beam.N; i++)
+            {
+                data.push_back(beam.vel[i][0]);
+                data.push_back(beam.vel[i][1]);
+                data.push_back(beam.vel[i][2]);
+                data.push_back(beam.probs[i]);
+            }
+            char *bytes = (char*)(data.data());
+            fout.write(bytes, ((int)(data.size()))*sizeof(float));
+            return fout;
         }
  
     }

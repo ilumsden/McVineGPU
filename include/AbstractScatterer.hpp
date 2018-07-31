@@ -39,7 +39,7 @@ namespace mcvine
                 public:
                     AbstractScatterer(std::shared_ptr<Beam> b, 
                                       std::shared_ptr<AbstractShape> s)
-                    : beam(b), shape(s) { ; }
+                    : beam(b), shape(s), type(-1) { ; }
 
                     virtual ~AbstractScatterer() { ; }
 

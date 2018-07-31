@@ -2,7 +2,9 @@
 #define BEAM_HPP
 
 #include <cstdlib>
+#include <fstream>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "Ray.hpp"
@@ -20,6 +22,12 @@ namespace mcvine
 
             ~Beam();
 
+            void printAllData(const std::string &fname=std::string());
+
+            void updateRays();
+
+            friend std::ostream& operator<<(std::ostream &fout, const Beam &beam);
+
             int N;
     
             Vec3<float> *origins, *vel;
@@ -29,6 +37,8 @@ namespace mcvine
             float *d_times, *d_probs;
 
             int numBlocks, blockSize;
+
+            std::vector< std::shared_ptr<Ray> > *rayptr;
         };
         
     }
