@@ -23,7 +23,7 @@
 #include "Sphere.hpp"
 #include "SystemVars.hpp"
 
-using Beam = mcvine::gpu::Beam;
+using AbstractShape = mcvine::gpu::composite::AbstractShape;
 
 namespace mcvine
 {
