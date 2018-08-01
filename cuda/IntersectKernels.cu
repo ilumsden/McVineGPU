@@ -335,7 +335,7 @@ namespace mcvine
                  * Otherwise, the intersectRectangle function is used to
                  * calculate any potential intersection times and points.
                  */
-                if (vel[0] != 0 && offset < 2)
+                if (vel[0] != 0)
                 {
                     intersectRectangle(ts[2], pts[offset], origins, shapeData[0]/2, vel, shapeData[1], shapeData[2], 2, offset);
                     intersectRectangle(ts[3], pts[offset], origins, -shapeData[0]/2, vel, shapeData[1], shapeData[2], 2, offset);
@@ -351,10 +351,10 @@ namespace mcvine
                  * Otherwise, the intersectRectangle function is used to
                  * calculate any potential intersection times and points.
                  */
-                if (vel[1] != 0 && offset < 2)
+                if (vel[1] != 0)
                 {
-                    intersectRectangle(ts[4], pts[offset], origins, shapeData[1]/2, vel, shapeData[2], shapeData[0], 1, offset);
-                    intersectRectangle(ts[5], pts[offset], origins, -shapeData[1]/2, vel, shapeData[2], shapeData[0], 1, offset);
+                    intersectRectangle(ts[4], pts[offset], origins, shapeData[1]/2, vel, shapeData[0], shapeData[2], 1, offset);
+                    intersectRectangle(ts[5], pts[offset], origins, -shapeData[1]/2, vel, shapeData[0], shapeData[2], 1, offset);
                 }
                 else
                 {

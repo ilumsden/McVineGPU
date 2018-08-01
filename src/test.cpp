@@ -6,10 +6,22 @@
 
 #include <chrono>
 
-#include "CudaDriver.hpp"
+//#include "CudaDriver.hpp"
+#include "IsotropicScatterer.hpp"
+#include "Beam.hpp"
 #include "SystemVars.hpp"
 
-float atten;
+typedef mcvine::gpu::composite::AbstractShape AbstractShape;
+typedef mcvine::gpu::Beam Beam;
+typedef mcvine::gpu::scatter::IsotropicScatterer IsotropicScatterer;
+typedef mcvine::gpu::Ray Ray;
+
+typedef mcvine::gpu::composite::Box Box;
+typedef mcvine::gpu::composite::Cylinder Cylinder;
+typedef mcvine::gpu::composite::Pyramid Pyramid;
+typedef mcvine::gpu::composite::Sphere Sphere;
+
+float mcvine::gpu::atten;
 
 int main(int argc, char **argv)
 {
@@ -29,7 +41,7 @@ int main(int argc, char **argv)
      * be used instead.
      */
     int blockSize = 512;
-    atten = 0.01;
+    mcvine::gpu::atten = 0.01;
     std::string fname = "finalData.dat";
     if (argc > 1)
     {
@@ -44,7 +56,7 @@ int main(int argc, char **argv)
             }
             else if (descript == "--atten")
             {
-                atten = std::stof(flag.substr(eqind+1));
+                mcvine::gpu::atten = std::stof(flag.substr(eqind+1));
             }
             else if (descript == "--fname")
             {
@@ -69,36 +81,32 @@ int main(int argc, char **argv)
     /* These lines create the AbstractShape pointer used for testing
      * each primative.
      */
-    std::shared_ptr<AbstractShape> b = std::make_shared<Box>(0.002, 0.05, 0.1);
+    //std::shared_ptr<AbstractShape> b = std::make_shared<Box>(0.002, 0.05, 0.1);
     //std::shared_ptr<AbstractShape> b = std::make_shared<Cylinder>(0.05, 0.1);
     //std::shared_ptr<AbstractShape> b = std::make_shared<Pyramid>(0.002, 0.05, 0.1);
-    //std::shared_ptr<AbstractShape> b = std::make_shared<Sphere>(0.1);
+    std::shared_ptr<AbstractShape> b = std::make_shared<Sphere>(0.1);
     // The "rays" vector stores pointers to the rays representing neutrons.
     std::vector< std::shared_ptr<Ray> > rays;
     double x = -0.5; double y = 0; double z = 0;
     double vx = 1; double vy = 0; double vz = 0;
-    // Debugging print to stdout.
-    /* This for loop randomly generates the initial ray data.
-     * The interior for loop is used to ensure the neutrons are moving
-     * in the general direction of the origin.
-     */
-    for (int i = 0; i < 100000000; i++)
+    if (b->type == "Pyramid")
     {
-        printf("i = %i\n", i);
-        rays.push_back(std::make_shared<Ray>(x, y, z, vx, vy, vz));
+        z -= 0.5;
     }
+    rays.push_back(std::make_shared<Ray>(x, y, z, vx, vy, vz));
     auto start = std::chrono::steady_clock::now();
-    // A CudaDriver object is created and used to run tests.
-    CudaDriver cd(rays, b, blockSize);
-    cd.runCalculations();
-    /*std::fstream fout;
+    std::shared_ptr<Beam> beam = std::make_shared<Beam>(rays, 100000000, blockSize);
+    mcvine::gpu::scatter::IsotropicScatterer iso(beam, b);
+    iso.scatter();
+    std::fstream fout;
     fout.open(fname, std::ios::out | std::ios::trunc | std::ios::binary);
     if (!fout.is_open())
     {
         fprintf(stderr, "%s could not be openned.\n", fname.c_str());
         return -2;
     }
-    fout << cd;*/
+    fout << *beam;
+    //beam->printAllData("test.txt");
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
     printf("Total Time = %f s\n", time);

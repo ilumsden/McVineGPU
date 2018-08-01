@@ -17,7 +17,7 @@ namespace mcvine
                 public:
                     IsotropicScatterer(std::shared_ptr<Beam> b,
                                        std::shared_ptr<AbstractShape> s)
-                    : AbstractScatterer(b, s), type(0) { ; }
+                    : AbstractScatterer(b, s) { type = 0; }
 
                     ~IsotropicScatterer() { ; }
 

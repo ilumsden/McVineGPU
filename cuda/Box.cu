@@ -18,6 +18,7 @@ namespace mcvine
                                         std::vector<float> &int_times,
                                         std::vector< Vec3<float> > &int_coords)
             {
+                namespace kernels = mcvine::gpu::kernels;
                 /* The device float array "device_time" is allocated on device, and
                  * its elements' values are set to -5.
                  * This array will store the times calculated by the intersectBox
@@ -25,7 +26,7 @@ namespace mcvine
                  */
                 float *device_time;
                 CudaErrchk( cudaMalloc(&device_time, 6*N*sizeof(float)) );
-                initArray<float><<<numBlocks, blockSize>>>(device_time, 6*N, -5);
+                kernels::initArray<float><<<numBlocks, blockSize>>>(device_time, 6*N, -5);
                 CudaErrchkNoCode();
                 /* The device Vec3<float> array "intersect" is allocated on device, and
                  * its elements' values are set to FLT_MAX.
@@ -34,7 +35,7 @@ namespace mcvine
                  */
                 Vec3<float> *d_intersect;
                 CudaErrchk( cudaMalloc(&d_intersect, 2*N*sizeof(Vec3<float>)) );
-                initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
+                kernels::initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
                 CudaErrchkNoCode();
                 /* The device float array "simp_times" is allocated on device, and
                  * its elements' values are set to -5.
@@ -42,7 +43,7 @@ namespace mcvine
                  */
                 float *simp_times;
                 CudaErrchk( cudaMalloc(&simp_times, 2*N*sizeof(float)) );
-                initArray<float><<<numBlocks, blockSize>>>(simp_times, 2*N, -5);
+                kernels::initArray<float><<<numBlocks, blockSize>>>(simp_times, 2*N, -5);
                 CudaErrchkNoCode();
                 float *d_data;
                 CudaErrchk( cudaMalloc(&d_data, 3*sizeof(float)) );
@@ -55,16 +56,17 @@ namespace mcvine
                                                        d_vel,
                                                        X, Y, Z,
                                                        N, device_time, intersect);*/
-                intersect<<<numBlocks, blockSize>>>(interKeyDict[type],
-                                                    d_origins, d_vel, d_data, N,
-                                                    device_time, d_intersect);
+                kernels::intersect<<<numBlocks, blockSize>>>(interKeyDict[type],
+                                                             d_origins, d_vel, d_data, N,
+                                                             device_time, d_intersect);
                 //simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 6, 2, simp_times);
-                simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time, 
-                                                                 d_intersect,
-                                                                 N, 6, 2, 2,
-                                                                 simp_times,
-                                                                 d_intersect);
-                forceIntersectionOrder<<<numBlocks, blockSize>>>(simp_times, d_intersect, N);
+                kernels::simplifyTimePointPairs<<<numBlocks, blockSize>>>(
+                    device_time, 
+                    d_intersect,
+                    N, 6, 2, 2,
+                    simp_times,
+                    d_intersect);
+                kernels::forceIntersectionOrder<<<numBlocks, blockSize>>>(simp_times, d_intersect, N);
                 CudaErrchkNoCode();
                 /* The data from simp_times and intersect is copied into
                  * int_times and int_coords respectively.
@@ -88,6 +90,7 @@ namespace mcvine
                                         std::vector<float> &int_times,
                                         std::vector< Vec3<float> > &int_coords)
             {
+                namespace kernels = mcvine::gpu::kernels;
             #if defined(INTERIORTEST)
                 std::vector< Vec3<float> > exit_coords;
                 std::vector<float> exit_times;
@@ -101,7 +104,7 @@ namespace mcvine
                  */
                 float *device_time;
                 CudaErrchk( cudaMalloc(&device_time, 6*N*sizeof(float)) );
-                initArray<float><<<numBlocks, blockSize>>>(device_time, 6*N, -5);
+                kernels::initArray<float><<<numBlocks, blockSize>>>(device_time, 6*N, -5);
                 CudaErrchkNoCode();
                 /* The device Vec3<float> array "intersect" is allocated on device, and
                  * its elements' values are set to FLT_MAX.
@@ -110,7 +113,7 @@ namespace mcvine
                  */
                 Vec3<float> *d_intersect;
                 CudaErrchk( cudaMalloc(&d_intersect, 2*N*sizeof(Vec3<float>)) );
-                initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
+                kernels::initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_intersect, 2*N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
                 CudaErrchkNoCode();
                 /* The device float array "simp_times" is allocated on device, and
                  * its elements' values are set to -5.
@@ -118,7 +121,7 @@ namespace mcvine
                  */
                 float *simp_times;
                 CudaErrchk( cudaMalloc(&simp_times, N*sizeof(float)) );
-                initArray<float><<<numBlocks, blockSize>>>(simp_times, N, -5);
+                kernels::initArray<float><<<numBlocks, blockSize>>>(simp_times, N, -5);
                 CudaErrchkNoCode();
                 /* The Vec3<float> array "simp_int" is allocated on the device, and
                  * its elements' values are set to FLT_MAX.
@@ -126,7 +129,7 @@ namespace mcvine
                  */
                 Vec3<float> *simp_int;
                 CudaErrchk( cudaMalloc(&simp_int, N*sizeof(Vec3<float>)) );
-                initArray< Vec3<float> ><<<numBlocks, blockSize>>>(simp_int, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
+                kernels::initArray< Vec3<float> ><<<numBlocks, blockSize>>>(simp_int, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
                 CudaErrchkNoCode();
                 float *d_data;
                 CudaErrchk( cudaMalloc(&d_data, 3*sizeof(float)) );
@@ -135,13 +138,10 @@ namespace mcvine
                 int_times.resize(N);
                 int_coords.resize(N);
                 // The kernels are called to perform the intersection calculation.
-                /*intersectBox<<<numBlocks, blockSize>>>(d_origins,
-                                                       d_vel,
-                                                       X, Y, Z,
-                                                       N, device_time, intersect);*/
-                intersect<<<numBlocks, blockSize>>>(interKeyDict[type],
-                                                    d_origins, d_vel, d_data, N,
-                                                    device_time, d_intersect);
+                kernels::intersect<<<numBlocks, blockSize>>>(interKeyDict[type],
+                                                             d_origins, d_vel, d_data, N,
+                                                             device_time, d_intersect);
+                CudaErrchkNoCode();
             #if defined(INTERIORTEST)
                 Vec3<float> *ec = exit_coords.data();
                 float *et = exit_times.data();
@@ -167,13 +167,12 @@ namespace mcvine
                 }
                 fout.close();
             #endif
-                //simplifyTimes<<<numBlocks, blockSize>>>(device_time, N, 6, 1, simp_times);
-                //simplifyPoints<<<numBlocks, blockSize>>>(intersect, N, 2, 1, simp_int);
-                simplifyTimePointPairs<<<numBlocks, blockSize>>>(device_time,
-                                                                 d_intersect,
-                                                                 N, 6, 2, 1,
-                                                                 simp_times,
-                                                                 simp_int);
+                kernels::simplifyTimePointPairs<<<numBlocks, blockSize>>>(
+                    device_time,
+                    d_intersect,
+                    N, 6, 2, 1,
+                    simp_times,
+                    simp_int);
                 CudaErrchkNoCode();
                 /* The data from simp_times and intersect is copied into
                  * int_times and int_coords respectively.

@@ -1,6 +1,7 @@
 #ifndef ABS_SCATTER_HPP
 #define ABS_SCATTER_HPP
 
+#include <algorithm>
 #include <cfloat>
 #include <cstdio>
 #include <cstdlib>
@@ -23,7 +24,7 @@
 #include "Sphere.hpp"
 #include "SystemVars.hpp"
 
-using AbstractShape = mcvine::gpu::composite::AbstractShape;
+typedef mcvine::gpu::composite::AbstractShape AbstractShape;
 
 namespace mcvine
 {

@@ -3,6 +3,8 @@
 
 #include <cstdlib>
 #include <fstream>
+#include <iomanip>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -18,15 +20,15 @@ namespace mcvine
 
         struct Beam
         {
-            Beam(std::vector< std::shared_ptr<Ray> > &rays, int size=-1, int bS=512);
+            Beam(std::vector< ::std::shared_ptr<Ray> > &rays, int size=-1, int bS=512);
 
             ~Beam();
 
-            void printAllData(const std::string &fname=std::string());
+            void printAllData(const std::string &fname=::std::string());
 
             void updateRays();
 
-            friend std::ostream& operator<<(std::ostream &fout, const Beam &beam);
+            friend std::ostream& operator<<(::std::ostream &fout, const Beam &beam);
 
             int N;
     
@@ -38,7 +40,7 @@ namespace mcvine
 
             int numBlocks, blockSize;
 
-            std::vector< std::shared_ptr<Ray> > *rayptr;
+            std::vector< ::std::shared_ptr<Ray> > *rayptr;
         };
         
     }

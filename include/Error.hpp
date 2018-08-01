@@ -7,6 +7,9 @@
  * copied here. It is the standard way of error checking your CUDA
  * code.
  */
+#include <cstdio>
+#include <cstdlib>
+#include <string>
 
 #include <curand.h>
 
@@ -33,10 +36,6 @@ namespace mcvine
         #define CudaErrchkNoCode() __cudaErrorNoCode(__FILE__, __LINE__)
 
         #define CuRandErrchk( err ) __cuRandErrorwithCode(err, __FILE__, __LINE__)
-         
-        #include <cstdio>
-        #include <cstdlib>
-        #include <string>
 
         /* This function checks if the CUDA error code passed as the
          * first parameter represents a sucessful operation or not.

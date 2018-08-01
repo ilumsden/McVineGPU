@@ -26,31 +26,28 @@ namespace mcvine
             {
 #if defined(DEBUG) || defined(PRINT3)
                 std::vector< Vec3<float> > tmp;
-                tmp.resize(N);
+                tmp.resize(beam->N);
                 Vec3<float> *ta = tmp.data();
-                memcpy(ta, beam->vel, N*sizeof(Vec3<float>));
+                memcpy(ta, beam->vel, beam->N*sizeof(Vec3<float>));
 #endif
 #if defined(DEBUG) || defined(RANDTEST)
                 std::vector<float> thetas, phis;
 #endif
                 curandGenerator_t gen;
                 float *d_randnums;
-                CudaErrchk( cudaMalloc(&d_randnums, 2*N*sizeof(float)) );
+                CudaErrchk( cudaMalloc(&d_randnums, 2*beam->N*sizeof(float)) );
                 CuRandErrchk( curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT) );
                 CuRandErrchk( curandSetPseudoRandomGeneratorSeed(gen, time(NULL)) );
-                CuRandErrchk( curandGenerateUniform(gen, d_randnums, 2*N) );
+                CuRandErrchk( curandGenerateUniform(gen, d_randnums, 2*beam->N) );
                 /* Calls the elasticScatteringKernel function to update the neutron
                  * velocities post-elastic scattering.
                  */
-                /*isotropicScatteringKernel<<<numBlocks, blockSize>>>(d_times,
-                                                                    d_vel,
-                                                                    d_randnums, N);*/
-                scatter<<<numBlocks, blockSize>>>(type, beam->d_times, beam->d_vel, d_randnums, N);
+                mcvine::gpu::kernels::scatter<<<beam->numBlocks, beam->blockSize>>>(type, beam->d_times, beam->d_vel, d_randnums, beam->N);
                 CudaErrchkNoCode();
                 /* Copies the new neutron velocities into the host-side neutron
                  * velocity array.
                  */
-                CudaErrchk( cudaMemcpy(beam->vel, beam->d_vel, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+                CudaErrchk( cudaMemcpy(beam->vel, beam->d_vel, beam->N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 // Opens a file stream and prints the 
                 // relevant data to scatteringVels.txt
 #if defined(DEBUG) || defined(PRINT3)
@@ -61,17 +58,17 @@ namespace mcvine
                     std::cerr << "scatteringVels.txt could not be opened.\n";
                     exit(-2);
                 }
-                for (int i = 0; i < N; i++)
+                for (int i = 0; i < beam->N; i++)
                 {
                     fout << "\n";
                     fout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
                          << tmp[i][0] << " " << tmp[i][1] << " " << tmp[i][2] << " || "
-                         << beam->vel[i][0] << " " << beam->vel[i][1] << " " << vel[i][2] << "\n";
+                         << beam->vel[i][0] << " " << beam->vel[i][1] << " " << beam->vel[i][2] << "\n";
                 }
                 fout.close();
 #endif
 #if defined(DEBUG) || defined(RANDTEST)
-                for (int i = 0; i < N; i++)
+                for (int i = 0; i < beam->N; i++)
                 {
                     thetas.push_back(acos(beam->vel[i][2] / beam->vel[i].length()));
                     phis.push_back(atan2(beam->vel[i][1], beam->vel[i][0]));

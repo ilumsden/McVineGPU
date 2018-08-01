@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
-project(McVineGPU LANGUAGES C CXX CUDA)
+project(McVineGPU LANGUAGES CXX CUDA)
 
 option(BUILD_TESTING "Build tests." OFF)
 

@@ -120,7 +120,7 @@ namespace mcvine
         #if defined(__CUDA_ARCH__)
             return sqrt( fabs(m_data[0])*fabs(m_data[0]) + fabs(m_data[1])*fabs(m_data[1]) + fabs(m_data[2])*fabs(m_data[2]) );
         #else
-            return std::sqrt( std::abs(m_data[0])*std::abs(m_data[0]) + std::abs(m_data[1])*std::abs(m_data[1]) + std::abs(m_data[2])*std::abs(m_data[2]) );
+            return std::sqrt( ::std::abs(m_data[0])*::std::abs(m_data[0]) + ::std::abs(m_data[1])*::std::abs(m_data[1]) + ::std::abs(m_data[2])*::std::abs(m_data[2]) );
         #endif
         }
 

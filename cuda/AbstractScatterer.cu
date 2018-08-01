@@ -12,7 +12,7 @@ namespace mcvine
             void AbstractScatterer::handleExteriorIntersect(std::vector<float> &int_times,
                                                             std::vector< Vec3<float> > &int_coords)
             {
-                shape->exteriorIntersect(beam->d_origins, beam->d_vel, N, blockSize, numBlocks, host_time, int_coords);
+                shape->exteriorIntersect(beam->d_origins, beam->d_vel, beam->N, beam->blockSize, beam->numBlocks, int_times, int_coords);
                 // Opens a file stream and prints the relevant data to time.txt
                 // NOTE: this is for debugging purposes only. This will be removed later.
 #if defined(DEBUG) || defined(PRINT1)
@@ -33,7 +33,7 @@ namespace mcvine
                         fout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
                              << beam->origins[ind][0] << " " << beam->origins[ind][1] << " " << beam->origins[ind][2] << " || "
                              << beam->vel[ind][0] << " " << beam->vel[ind][1] << " " << beam->vel[ind][2] << " | "
-                             << host_time[i] << " / " << int_coords[i][0] << "\n";
+                             << int_times[i] << " / " << int_coords[i][0] << "\n";
                         fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << " | "
                              << std::fixed << std::setprecision(5) << std::setw(8) << std::right << buf << " / " << int_coords[i][1] << "\n";
                         std::string buf = "        ";
@@ -43,7 +43,7 @@ namespace mcvine
                     else
                     {
                         fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << " | "
-                             << std::fixed << std::setprecision(5) << std::setw(8) << std::right << host_time[i] << " / " << int_coords[i][0] << "\n";
+                             << std::fixed << std::setprecision(5) << std::setw(8) << std::right << int_times[i] << " / " << int_coords[i][0] << "\n";
                         fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << " | "
                              << std::fixed << std::setprecision(5) << std::setw(8) << std::right << buf << " / " << int_coords[i][1] << "\n";
                         fout << buf << " " << buf << " " << buf << "  " << buf << " " << buf << " " << buf << " | "
@@ -59,11 +59,12 @@ namespace mcvine
             void AbstractScatterer::findScatteringSites(const std::vector<float> &int_times,
                                                         const std::vector< Vec3<float> > &int_coords)
             {
+                namespace kernels = mcvine::gpu::kernels;
 #if defined(DEBUG) || defined(PRINT2)
                 std::vector< Vec3<float> > tmp;
-                tmp.resize(N);
+                tmp.resize(beam->N);
                 Vec3<float> *ta = tmp.data();
-                memcpy(ta, beam->origins, N*sizeof(Vec3<float>));
+                memcpy(ta, beam->origins, beam->N*sizeof(Vec3<float>));
 #endif
                 // Stores the size of the `int_times` for later
                 int tsize = (int)(int_times.size());
@@ -71,55 +72,55 @@ namespace mcvine
                  * data passed in from `int_times`.
                  */
                 float *ts;
-                CudaErrchk( cudaMalloc(&ts, 2*N*sizeof(float)) );
-                CudaErrchk( cudaMemcpy(ts, int_times.data(), 2*N*sizeof(float), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMalloc(&ts, 2*beam->N*sizeof(float)) );
+                CudaErrchk( cudaMemcpy(ts, int_times.data(), 2*beam->N*sizeof(float), cudaMemcpyHostToDevice) );
                 /* `pos` is a device-side array that stores the coordinates of the
                  * scattering sites for the neutrons.
                  * The default value of its data is FLT_MAX.
                  */
                 Vec3<float> *pos;
-                CudaErrchk( cudaMalloc(&pos, N*sizeof(Vec3<float>)) );
-                initArray< Vec3<float> ><<<numBlocks, blockSize>>>(pos, N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
+                CudaErrchk( cudaMalloc(&pos, beam->N*sizeof(Vec3<float>)) );
+                kernels::initArray< Vec3<float> ><<<beam->numBlocks, beam->blockSize>>>(pos, beam->N, Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX));
                 CudaErrchkNoCode();
                 /* `scat_times` is a device_side array that stores the times at
                  * which the neutrons reach their scattering sites.
                  * The default value of its data is -5.
                  */
                 float *scat_times;
-                CudaErrchk( cudaMalloc(&scat_times, N*sizeof(float)) );
-                initArray<float><<<numBlocks, blockSize>>>(scat_times, N, -5);
+                CudaErrchk( cudaMalloc(&scat_times, beam->N*sizeof(float)) );
+                kernels::initArray<float><<<beam->numBlocks, beam->blockSize>>>(scat_times, beam->N, -5);
                 curandGenerator_t gen;
                 float *d_randnums;
-                CudaErrchk( cudaMalloc(&d_randnums, N*sizeof(float)) );
+                CudaErrchk( cudaMalloc(&d_randnums, beam->N*sizeof(float)) );
                 CuRandErrchk( curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT) );
                 CuRandErrchk( curandSetPseudoRandomGeneratorSeed(gen, time(NULL)) );
-                CuRandErrchk( curandGenerateUniform(gen, d_randnums, N) );
+                CuRandErrchk( curandGenerateUniform(gen, d_randnums, beam->N) );
                 // Calls the kernel for determining the scattering sites for the neutrons
-                calcScatteringSites<<<numBlocks, blockSize>>>(ts, beam->d_origins, beam->d_vel, pos, scat_times, d_randnums, N);
+                mcvine::gpu::kernels::calcScatteringSites<<<beam->numBlocks, beam->blockSize>>>(ts, beam->d_origins, beam->d_vel, pos, scat_times, d_randnums, beam->N);
                 /* Propagates the neutrons to their scattering sites.
                  * In other words, the scattering coordinates and times are copied
                  * into the device arrays that store the neutrons' origins and times
                  * (d_origins and d_times respectively).
                  */
-                propagate<<<numBlocks, blockSize>>>(beam->d_origins, beam->d_times, pos, scat_times, N);
+                mcvine::gpu::kernels::propagate<<<beam->numBlocks, beam->blockSize>>>(beam->d_origins, beam->d_times, pos, scat_times, beam->N);
                 CudaErrchkNoCode();
                 /* `ic` is a device-side array that stores the intersection
                  * coordinates between the neutron and scattering body, as calculated
                  * in the handleIntersect function.
                  */
                 Vec3<float> *ic;
-                CudaErrchk( cudaMalloc(&ic, 2*N*sizeof(Vec3<float>)) );
-                CudaErrchk( cudaMemcpy(ic, int_coords.data(), 2*N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMalloc(&ic, 2*beam->N*sizeof(Vec3<float>)) );
+                CudaErrchk( cudaMemcpy(ic, int_coords.data(), 2*beam->N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
                 /* Updates the probability attribute of the neutrons to account
                  * for the absorption that occurs as a neutron travels through the
                  * scattering body to the scattering site.
                  */
-                updateProbability<<<numBlocks, blockSize>>>(beam->d_probs, beam->d_origins, ic, 1, 2, atten, N);
+                mcvine::gpu::kernels::updateProbability<<<beam->numBlocks, beam->blockSize>>>(beam->d_probs, beam->d_origins, ic, 1, 2, atten, beam->N);
                 CudaErrchkNoCode();
                 // Updates the host-side arrays for the edited neutron data.
-                CudaErrchk( cudaMemcpy(beam->origins, beam->d_origins, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
-                CudaErrchk( cudaMemcpy(beam->times, beam->d_times, N*sizeof(float), cudaMemcpyDeviceToHost) );
-                CudaErrchk( cudaMemcpy(beam->probs, beam->d_probs, N*sizeof(float), cudaMemcpyDeviceToHost) );
+                CudaErrchk( cudaMemcpy(beam->origins, beam->d_origins, beam->N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+                CudaErrchk( cudaMemcpy(beam->times, beam->d_times, beam->N*sizeof(float), cudaMemcpyDeviceToHost) );
+                CudaErrchk( cudaMemcpy(beam->probs, beam->d_probs, beam->N*sizeof(float), cudaMemcpyDeviceToHost) );
 #if defined(DEBUG) || defined(PRINT2)
                 std::fstream fout;
                 fout.open("scatteringSites.txt", std::ios::out);
@@ -128,7 +129,7 @@ namespace mcvine
                     std::cerr << "scatteringSites.txt could not be opened.\n";
                     exit(-2);
                 }
-                for (int i = 0; i < N; i++)
+                for (int i = 0; i < beam->N; i++)
                 {
                     int ind = 2*i;
                     fout << "\n";
@@ -169,24 +170,24 @@ namespace mcvine
             {
 #if defined(DEBUG) || defined(PRINT4)
                 std::vector< Vec3<float> > tmp;
-                tmp.resize(N);
+                tmp.resize(beam->N);
                 Vec3<float> *ta = tmp.data();
-                memcpy(ta, beam->origins, N*sizeof(Vec3<float>));
+                memcpy(ta, beam->origins, beam->N*sizeof(Vec3<float>));
 #endif
                 std::vector<float> int_times;
                 std::vector< Vec3<float> > int_coords;
-                shape->interiorIntersect(beam->d_origins, beam->d_vel, N, blockSize, numBlocks, int_times, int_coords); 
+                shape->interiorIntersect(beam->d_origins, beam->d_vel, beam->N, beam->blockSize, beam->numBlocks, int_times, int_coords); 
                 float *exit_times;
-                CudaErrchk( cudaMalloc(&exit_times, N*sizeof(float)) );
-                CudaErrchk( cudaMemcpy(exit_times, int_times.data(), N*sizeof(float), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMalloc(&exit_times, beam->N*sizeof(float)) );
+                CudaErrchk( cudaMemcpy(exit_times, int_times.data(), beam->N*sizeof(float), cudaMemcpyHostToDevice) );
                 Vec3<float> *exit_coords;
-                CudaErrchk( cudaMalloc(&exit_coords, N*sizeof(Vec3<float>)) );
-                CudaErrchk( cudaMemcpy(exit_coords, int_coords.data(), N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-                updateProbability<<<numBlocks, blockSize>>>(beam->d_probs, exit_coords, beam->d_origins, 1, 1, atten, N);
-                propagate<<<numBlocks, blockSize>>>(beam->d_origins, beam->d_times, exit_coords, exit_times, N);
-                CudaErrchk( cudaMemcpy(beam->origins, beam->d_origins, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
-                CudaErrchk( cudaMemcpy(beam->times, beam->d_times, N*sizeof(float), cudaMemcpyDeviceToHost) );
-                CudaErrchk( cudaMemcpy(beam->probs, beam->d_probs, N*sizeof(float), cudaMemcpyDeviceToHost) );
+                CudaErrchk( cudaMalloc(&exit_coords, beam->N*sizeof(Vec3<float>)) );
+                CudaErrchk( cudaMemcpy(exit_coords, int_coords.data(), beam->N*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+                mcvine::gpu::kernels::updateProbability<<<beam->numBlocks, beam->blockSize>>>(beam->d_probs, exit_coords, beam->d_origins, 1, 1, atten, beam->N);
+                mcvine::gpu::kernels::propagate<<<beam->numBlocks, beam->blockSize>>>(beam->d_origins, beam->d_times, exit_coords, exit_times, beam->N);
+                CudaErrchk( cudaMemcpy(beam->origins, beam->d_origins, beam->N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+                CudaErrchk( cudaMemcpy(beam->times, beam->d_times, beam->N*sizeof(float), cudaMemcpyDeviceToHost) );
+                CudaErrchk( cudaMemcpy(beam->probs, beam->d_probs, beam->N*sizeof(float), cudaMemcpyDeviceToHost) );
 #if defined(DEBUG) || defined(PRINT4)
                 std::fstream fout;
                 fout.open("exit.txt", std::ios::out);
@@ -195,7 +196,7 @@ namespace mcvine
                     std::cerr << "exit.txt could not be openned.\n";
                     exit(-2);
                 }
-                for (int i = 0; i < N; i++)
+                for (int i = 0; i < beam->N; i++)
                 {
                     std::string buf = "        ";
                     fout << "\n";

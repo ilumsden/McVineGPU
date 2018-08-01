@@ -1,6 +1,8 @@
 #include "Beam.hpp"
 #include "Error.hpp"
 
+#include <chrono>
+
 namespace mcvine
 {
 
@@ -47,14 +49,21 @@ namespace mcvine
                 CudaErrchk( cudaMalloc(&d_times, N*sizeof(float)) );
                 probs = (float*)malloc(N*sizeof(float));
                 CudaErrchk( cudaMalloc(&d_probs, N*sizeof(float)) );
-                initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_origins, N, rays[0].origin);
-                initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_vel, N, rays[0].vel);
-                initArray<float><<<numBlocks, blockSize>>>(d_times, N, rays[0].t);
-                initArray<float><<<numBlocks, blockSize>>>(d_probs, N, rays[0].prob);
+                auto start = std::chrono::steady_clock::now();
+
+                namespace kernels = mcvine::gpu::kernels;
+
+                kernels::initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_origins, N, rays[0]->origin);
+                kernels::initArray< Vec3<float> ><<<numBlocks, blockSize>>>(d_vel, N, rays[0]->vel);
+                kernels::initArray<float><<<numBlocks, blockSize>>>(d_times, N, rays[0]->t);
+                kernels::initArray<float><<<numBlocks, blockSize>>>(d_probs, N, rays[0]->prob);
                 CudaErrchk( cudaMemcpy(origins, d_origins, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaMemcpy(vel, d_vel, N*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaMemcpy(times, d_times, N*sizeof(float), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaMemcpy(probs, d_probs, N*sizeof(float), cudaMemcpyDeviceToHost) );
+                auto stop = std::chrono::steady_clock::now();
+                double time = std::chrono::duration<double>(stop-start).count();
+                printf("Total Time = %f s\n", time);
             }
             else
             {

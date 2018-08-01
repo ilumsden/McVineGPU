@@ -5,7 +5,7 @@
 namespace mcvine
 {
 
-    namesapce gpu
+    namespace gpu
     {
 
         namespace kernels
