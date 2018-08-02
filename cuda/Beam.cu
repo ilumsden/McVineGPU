@@ -63,7 +63,7 @@ namespace mcvine
                 CudaErrchk( cudaMemcpy(probs, d_probs, N*sizeof(float), cudaMemcpyDeviceToHost) );
                 auto stop = std::chrono::steady_clock::now();
                 double time = std::chrono::duration<double>(stop-start).count();
-                printf("Total Time = %f s\n", time);
+                printf("Data Gen Time = %f s\n", time);
             }
             else
             {

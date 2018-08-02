@@ -51,9 +51,6 @@ namespace mcvine
                 int_times.resize(2*N);
                 int_coords.resize(2*N);
                 // The kernels are called to perform the intersection calculation.
-                /*intersectPyramid<<<numBlocks, blockSize>>>(d_origins, d_vel,
-                                                           edgeX, edgeY, height,
-                                                           N, device_time, intersect);*/
                 kernels::intersect<<<numBlocks, blockSize>>>(interKeyDict[type],
                                                              d_origins, d_vel, d_data, N,
                                                              device_time, d_intersect);
