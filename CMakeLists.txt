@@ -13,20 +13,10 @@ if(BUILD_TESTING)
     file(GLOB test_drivers "${CMAKE_SOURCE_DIR}/test/*.cpp")
 endif()
 
-list(REMOVE_ITEM gpu_source_files "${CMAKE_SOURCE_DIR}/cuda/CudaDriver.cu")
-list(REMOVE_ITEM gpu_headers "${CMAKE_SOURCE_DIR}/include/CudaDriver.hpp")
-
 message(STATUS "CUDA include directories are ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-
-#find_package(HDF5 COMPONENTS C HL NO_MODULE REQUIRED shared)
-#find_package(HDF5 COMPONENTS C HL NO_MODULE REQUIRED static)
-#if(HDF5_FOUND)
-#    include_directories(${HDF5_INCLUDE_DIR})
-#    set(_hdf5_libs hdf5 hdf5_cpp)
-#endif()
 
 list(APPEND CMAKE_CUDA_FLAGS "-cudart static")
 

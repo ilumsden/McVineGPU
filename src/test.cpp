@@ -6,7 +6,6 @@
 
 #include <chrono>
 
-//#include "CudaDriver.hpp"
 #include "IsotropicScatterer.hpp"
 #include "Beam.hpp"
 #include "SystemVars.hpp"
