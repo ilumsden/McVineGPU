@@ -10,6 +10,10 @@ The following dependencies are required to run the code in this repository:
   * This project supports separable compilation of device code. As a result, this should only be run on a Nvidia GPU with a Compute Capability of 2.0 or higher. You can find a list of GPUs and their Compute Capabilities [here](https://developer.nvidia.com/cuda-gpus). __Note:__ The hyperlinked website does _not_ list all CUDA capable Nvidia GPUs. Some GPUs that aren't listed (i.e. GeForce GTX 1050 Mobile) can still be used.
 * [A C++ compiler that supports C++11](https://gcc.gnu.org/gcc-4.8/)
 
+Additionally, the following dependency is required for compiling and running the tests in this repository:
+* *googletest* (v1.8 recommended)
+  * __Note:__ *googletest* must actually be installed to be used with this repository. It can be installed [from source](https://github.com/google/googletest/blob/master/googletest/README.md) or from a package manager, like [Anaconda](https://anaconda.org/conda-forge/gtest).
+
 ## Organization:
 
 The code in this repository is organized as follows:
@@ -19,5 +23,5 @@ The code in this repository is organized as follows:
   * CUDA Device Code
   * Host (CPU) Code that calls CUDA Kernels
 * `src`: This directory stores any plain C++ (no CUDA) code that is needed. Currently, it only contains the main function for the non-test code.
-* `test`: This directory stores all the C++ (regular and CUDA) code that is directly used for testing (i.e. unit tests).
+* `test`: This directory stores the unit tests for the code base. All these tests are made with *googletest*.
 * `test_separate_compilation`: This directory is not part of the main repository. It is an example directory that shows how to manually compile a CUDA project with separable compilation for device code.
