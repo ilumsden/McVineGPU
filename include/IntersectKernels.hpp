@@ -59,7 +59,7 @@ namespace mcvine
              * in the correct spot in the ts and pts arrays.
              * This function can be called on device only.
              */
-            __device__ void intersectTriangle(float &ts, Vec3<float> *pts,
+            __device__ void intersectTriangle(float &ts, Vec3<float> &pts,
                                               const Vec3<float> &orig,
                                               const Vec3<float> &vel,
                                               const Vec3<float> &a,
