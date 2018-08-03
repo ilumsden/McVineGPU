@@ -81,9 +81,9 @@ int main(int argc, char **argv)
     /* These lines create the AbstractShape pointer used for testing
      * each primative.
      */
-    std::shared_ptr<AbstractShape> b = std::make_shared<Box>(0.002, 0.05, 0.1);
+    //std::shared_ptr<AbstractShape> b = std::make_shared<Box>(0.002, 0.05, 0.1);
     //std::shared_ptr<AbstractShape> b = std::make_shared<Cylinder>(0.05, 0.1);
-    //std::shared_ptr<AbstractShape> b = std::make_shared<Pyramid>(0.002, 0.05, 0.1);
+    std::shared_ptr<AbstractShape> b = std::make_shared<Pyramid>(0.002, 0.05, 0.1);
     //std::shared_ptr<AbstractShape> b = std::make_shared<Sphere>(0.1);
     // The "rays" vector stores pointers to the rays representing neutrons.
     std::vector< std::shared_ptr<Ray> > rays;
@@ -97,14 +97,14 @@ int main(int argc, char **argv)
     std::shared_ptr<Beam> beam = std::make_shared<Beam>(rays, 100000000, blockSize);
     mcvine::gpu::scatter::IsotropicScatterer iso(beam, b);
     iso.scatter();
-    /*std::fstream fout;
+    std::fstream fout;
     fout.open(fname, std::ios::out | std::ios::trunc | std::ios::binary);
     if (!fout.is_open())
     {
         fprintf(stderr, "%s could not be openned.\n", fname.c_str());
         return -2;
     }
-    fout << *beam;*/
+    fout << *beam;
     //beam->printAllData("test.txt");
     auto stop = std::chrono::steady_clock::now();
     double time = std::chrono::duration<double>(stop - start).count();
