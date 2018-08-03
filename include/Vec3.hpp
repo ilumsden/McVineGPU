@@ -110,7 +110,6 @@ namespace mcvine
         __host__ __device__ void Vec3<T>::normalize()
         {
             *this *= (1.0 / length());
-            printf("x = %f\ny = %f\nz = %f\n", m_data[0], m_data[1], m_data[2]);
         }
 
         // This function calculates and returns the length of the vector.
