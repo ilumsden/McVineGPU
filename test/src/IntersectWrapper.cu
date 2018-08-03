@@ -90,7 +90,7 @@ namespace mcvine
                 time[0] = -5; time[1] = -5;
                 point[0] = Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX);
                 point[1] = Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX);
-                float radius = 0.002; float height = 0.1;
+                float radius = 0.05; float height = 0.1;
                 Vec3<float> *d_orig, *d_vel, *pts;
                 float *ts;
                 CudaErrchk( cudaMalloc(&d_orig, sizeof(Vec3<float>)) );
@@ -115,7 +115,7 @@ namespace mcvine
                 time[0] = -5; time[1] = -5;
                 point[0] = Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX);
                 point[1] = Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX);
-                float radius = 0.002; float height = 0.1;
+                float radius = 0.05; float height = 0.1;
                 Vec3<float> *d_orig, *d_vel, *pts;
                 float *ts;
                 CudaErrchk( cudaMalloc(&d_orig, sizeof(Vec3<float>)) );
