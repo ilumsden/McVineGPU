@@ -1,32 +1,49 @@
 #include "IntersectKernels.hpp"
+#include <cfloat>
+#include <vector>
 
-__global__ void testIntRectangle(float *ts, Vec3<float> *pts,
-                                 const Vec3<float> *orig,
-                                 const Vec3<float> *vel,
-                                 const float X, const float Y, const float Z,
-                                 const int N);
+namespace mcvine
+{
 
-__global__ void testIntCylSide(float *ts, Vec3<float> *pts,
-                               const Vec3<float> *orig,
-                               const Vec3<float> *vel,
-                               const float r, const float h, const int N);
+    namespace gpu
+    {
 
-__global__ void testIntCylTopBottom(float *ts, Vec3<float> *pts,
-                                    const Vec3<float> *orig,
-                                    const Vec3<float> *vel,
-                                    const float r, const float h, const int N);
+        namespace test
+        {
 
-__global__ void testIntTriangle(float *ts, Vec3<float> *pts, 
-                                const Vec3<float> *orig,
-                                const Vec3<float> *vel,
-                                const Vec3<float> *verts, const int N);
+            __global__ void testIntRectangle(float *ts, Vec3<float> *pts,
+                                             const Vec3<float> *orig,
+                                             const Vec3<float> *vel,
+                                             const float X, const float Y, const float Z,
+                                             const int N);
 
-void rectangleTest(float *times, Vec3<float> *points);
+            __global__ void testIntCylSide(float *ts, Vec3<float> *pts,
+                                           const Vec3<float> *orig,
+                                           const Vec3<float> *vel,
+                                           const float r, const float h, const int N);
 
-void cylinderSideTest(float *times, Vec3<float> *points);
+            __global__ void testIntCylTopBottom(float *ts, Vec3<float> *pts,
+                                                const Vec3<float> *orig,
+                                                const Vec3<float> *vel,
+                                                const float r, const float h, const int N);
 
-void cylinderEndTest(float *times, Vec3<float> *points);
+            __global__ void testIntTriangle(float *ts, Vec3<float> *pts, 
+                                            const Vec3<float> *orig,
+                                            const Vec3<float> *vel,
+                                            const Vec3<float> *verts, const int N);
 
-void triangleTest(float *times, Vec3<float> *points);
+            void rectangleTest(Vec3<float> &orig, Vec3<float> &vel, float &time, Vec3<float> &point);
 
-void 3DTest(const int key, float *times, Vec3<float> *points);
+            void cylinderSideTest(Vec3<float> &orig, Vec3<float> &vel, float *time, Vec3<float> *point);
+
+            void cylinderEndTest(Vec3<float> &orig, Vec3<float> &vel, float *time, Vec3<float> *point);
+
+            void triangleTest(Vec3<float> &orig, Vec3<float> &vel, float &time, Vec3<float> &point);
+
+            void 3DTest(const int key, float *time, Vec3<float> *point);
+
+        }
+
+    }
+
+}
