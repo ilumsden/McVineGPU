@@ -5,7 +5,17 @@
  * global variables that might be needed.
  */
 
-// The attenuation coefficient for the scattering material
-extern float atten;
+namespace mcvine
+{
+
+    namespace gpu
+    {
+
+        // The attenuation coefficient for the scattering material
+        extern float atten;
+
+    }
+
+}
 
 #endif
