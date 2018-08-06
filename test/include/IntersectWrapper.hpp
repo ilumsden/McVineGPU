@@ -40,7 +40,7 @@ namespace mcvine
 
             void triangleTest(Vec3<float> &orig, Vec3<float> &vel, float &time, Vec3<float> &point);
 
-            void 3DTest(const int key, float *time, Vec3<float> *point);
+            void solidTest(const int key, float *time, Vec3<float> *point);
 
         }
 

@@ -1,6 +1,8 @@
 #include "IntersectWrapper.hpp"
 #include "Error.hpp"
 
+#include <cstdio>
+
 namespace mcvine
 {
 
@@ -21,7 +23,8 @@ namespace mcvine
                 int index = blockIdx.x * blockDim.x + threadIdx.x;
                 if (index < N)
                 {
-                    kernels::intersectRectangle(ts[index], pts[index], orig[index], X/2, vel[index], Y, Z, 2, 0);
+                    int off = 0;
+                    kernels::intersectRectangle(ts[index], pts[index], orig[index], X/2, vel[index], Y, Z, 2, off);
                 }
             }
 
@@ -33,7 +36,8 @@ namespace mcvine
                 int index = blockIdx.x * blockDim.x + threadIdx.x;
                 if (index < N)
                 {
-                    kernels::intersectCylinderSide(&(ts[2*index]), &(pts[2*index]), orig[index], vel[index], r, h, 0);
+                    int off = 0;
+                    kernels::intersectCylinderSide(&(ts[2*index]), &(pts[2*index]), orig[index], vel[index], r, h, off);
                 }
             }
 
@@ -45,7 +49,8 @@ namespace mcvine
                 int index = blockIdx.x * blockDim.x + threadIdx.x;
                 if (index < N)
                 {
-                    kernels::intersectCylinderTopBottom($(ts[2*index]), $(pts[2*index]), orig[index], vel[index], r, h, 0);
+                    int off = 0;
+                    kernels::intersectCylinderTopBottom(&(ts[2*index]), &(pts[2*index]), orig[index], vel[index], r, h, off);
                 }
             }
 
@@ -58,7 +63,8 @@ namespace mcvine
                 int index = blockIdx.x * blockDim.x + threadIdx.x;
                 if (index < N)
                 {
-                    kernels::intersectTriangle(ts[index], pts[index], orig[index], vel[index], verts[0], verts[1], verts[2], 0);
+                    int off = 0;
+                    kernels::intersectTriangle(ts[index], pts[index], orig[index], vel[index], verts[0], verts[1], verts[2], off);
                 }
             }
 
@@ -72,11 +78,12 @@ namespace mcvine
                 CudaErrchk( cudaMalloc(&d_vel, sizeof(Vec3<float>)) );
                 CudaErrchk( cudaMalloc(&pts, sizeof(Vec3<float>)) );
                 CudaErrchk( cudaMalloc(&ts, sizeof(float)) );
-                CudaErrchk( cudaMemcpy(d_orig, orig, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-                CudaErrchk( cudaMemcpy(d_vel, vel, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(d_orig, &orig, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(d_vel, &vel, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
                 CudaErrchk( cudaMemcpy(pts, &point, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
                 CudaErrchk( cudaMemcpy(ts, &time, sizeof(float), cudaMemcpyHostToDevice) );
                 testIntRectangle<<<1, 1>>>(ts, pts, d_orig, d_vel, X, Y, Z, 1);
+                CudaErrchkNoCode();
                 CudaErrchk( cudaMemcpy(&time, ts, sizeof(float), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaMemcpy(&point, pts, sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaFree(d_orig) );
@@ -97,13 +104,14 @@ namespace mcvine
                 CudaErrchk( cudaMalloc(&d_vel, sizeof(Vec3<float>)) );
                 CudaErrchk( cudaMalloc(&pts, 2*sizeof(Vec3<float>)) );
                 CudaErrchk( cudaMalloc(&ts, 2*sizeof(float)) );
-                CudaErrchk( cudaMemcpy(d_orig, orig, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-                CudaErrchk( cudaMemcpy(d_vel, vel, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-                CudaErrchk( cudaMemcpy(pts, &point, 2*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-                CudaErrchk( cudaMemcpy(ts, &time, 2*sizeof(float), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(d_orig, &orig, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(d_vel, &vel, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(pts, point, 2*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(ts, time, 2*sizeof(float), cudaMemcpyHostToDevice) );
                 testIntCylSide<<<1, 1>>>(ts, pts, d_orig, d_vel, radius, height, 1);
-                CudaErrchk( cudaMemcpy(&time, ts, 2*sizeof(float), cudaMemcpyDeviceToHost) );
-                CudaErrchk( cudaMemcpy(&point, pts, 2*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+                CudaErrchkNoCode();
+                CudaErrchk( cudaMemcpy(time, ts, 2*sizeof(float), cudaMemcpyDeviceToHost) );
+                CudaErrchk( cudaMemcpy(point, pts, 2*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaFree(d_orig) );
                 CudaErrchk( cudaFree(d_vel) );
                 CudaErrchk( cudaFree(pts) );
@@ -122,13 +130,14 @@ namespace mcvine
                 CudaErrchk( cudaMalloc(&d_vel, sizeof(Vec3<float>)) );
                 CudaErrchk( cudaMalloc(&pts, 2*sizeof(Vec3<float>)) );
                 CudaErrchk( cudaMalloc(&ts, 2*sizeof(float)) );
-                CudaErrchk( cudaMemcpy(d_orig, orig, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-                CudaErrchk( cudaMemcpy(d_vel, vel, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-                CudaErrchk( cudaMemcpy(pts, &point, 2*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-                CudaErrchk( cudaMemcpy(ts, &time, 2*sizeof(float), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(d_orig, &orig, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(d_vel, &vel, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(pts, point, 2*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(ts, time, 2*sizeof(float), cudaMemcpyHostToDevice) );
                 testIntCylTopBottom<<<1, 1>>>(ts, pts, d_orig, d_vel, radius, height, 1);
-                CudaErrchk( cudaMemcpy(&time, ts, 2*sizeof(float), cudaMemcpyDeviceToHost) );
-                CudaErrchk( cudaMemcpy(&point, pts, 2*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
+                CudaErrchkNoCode();
+                CudaErrchk( cudaMemcpy(time, ts, 2*sizeof(float), cudaMemcpyDeviceToHost) );
+                CudaErrchk( cudaMemcpy(point, pts, 2*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaFree(d_orig) );
                 CudaErrchk( cudaFree(d_vel) );
                 CudaErrchk( cudaFree(pts) );
@@ -138,7 +147,7 @@ namespace mcvine
             void triangleTest(Vec3<float> &orig, Vec3<float> &vel, float &time, Vec3<float> &point)
             {
                 time = -5; point = Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX);
-                Vec3<float> verts[3] = { Vec3<float>(0, 0, 0), Vec3<float>(-0.001, 0.025, -0.1), Vec3<float>(-0.001, -0.025, -0.1) };
+                Vec3<float> verts[3] = { Vec3<float>(0, 0, 0), Vec3<float>(-0.001, 0.025, -0.1), Vec3<float>(0.001, 0.025, -0.1) };
                 Vec3<float> *d_orig, *d_vel, *d_verts, *pts;
                 float *ts;
                 CudaErrchk( cudaMalloc(&d_orig, sizeof(Vec3<float>)) );
@@ -146,12 +155,13 @@ namespace mcvine
                 CudaErrchk( cudaMalloc(&d_verts, 3*sizeof(Vec3<float>)) );
                 CudaErrchk( cudaMalloc(&pts, sizeof(Vec3<float>)) );
                 CudaErrchk( cudaMalloc(&ts, sizeof(float)) );
-                CudaErrchk( cudaMemcpy(d_orig, orig, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-                CudaErrchk( cudaMemcpy(d_vel, vel, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(d_orig, &orig, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(d_vel, &vel, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
                 CudaErrchk( cudaMemcpy(d_verts, &(verts[0]), 3*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
                 CudaErrchk( cudaMemcpy(pts, &point, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
                 CudaErrchk( cudaMemcpy(ts, &time, sizeof(float), cudaMemcpyHostToDevice) );
-                testIntRectangle<<<1, 1>>>(ts, pts, d_orig, d_vel, X, Y, Z, 1);
+                testIntTriangle<<<1, 1>>>(ts, pts, d_orig, d_vel, d_verts, 1);
+                CudaErrchkNoCode();
                 CudaErrchk( cudaMemcpy(&time, ts, sizeof(float), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaMemcpy(&point, pts, sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaFree(d_orig) );
@@ -161,7 +171,7 @@ namespace mcvine
                 CudaErrchk( cudaFree(ts) );
             }
 
-            void 3DTest(const int key, float *time, Vec3<float> *point)
+            void solidTest(const int key, float *time, Vec3<float> *point)
             {
                 std::vector<float> sd;
                 Vec3<float> orig, vel;
@@ -204,17 +214,18 @@ namespace mcvine
                 point[1] = Vec3<float>(FLT_MAX, FLT_MAX, FLT_MAX);
                 Vec3<float> *d_orig, *d_vel, *pts;
                 float *shapeData, *ts;
-                CudaErrchk( cudaMalloc(&d_orig, sizeof(Vec3<float)) );
-                CudaErrchk( cudaMalloc(&d_vel, sizeof(Vec3<float)) );
-                CudaErrchk( cudaMalloc(&pts, 2*sizeof(Vec3<float)) );
+                CudaErrchk( cudaMalloc(&d_orig, sizeof(Vec3<float>)) );
+                CudaErrchk( cudaMalloc(&d_vel, sizeof(Vec3<float>)) );
+                CudaErrchk( cudaMalloc(&pts, 2*sizeof(Vec3<float>)) );
                 CudaErrchk( cudaMalloc(&shapeData, ((int)(sd.size()))*sizeof(float)) );
                 CudaErrchk( cudaMalloc(&ts, groupsize*sizeof(float)) );
                 CudaErrchk( cudaMemcpy(d_orig, &orig, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
                 CudaErrchk( cudaMemcpy(d_vel, &vel, sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
                 CudaErrchk( cudaMemcpy(pts, point, 2*sizeof(Vec3<float>), cudaMemcpyHostToDevice) );
-                CudaErrchk( cudaMemcpy(shapeData, &(sd[0]), ((int)(sd.size()))*sizeof(float), cudaMemcpyHostToDevice) );
+                CudaErrchk( cudaMemcpy(shapeData, sd.data(), ((int)(sd.size()))*sizeof(float), cudaMemcpyHostToDevice) );
                 CudaErrchk( cudaMemcpy(ts, time, groupsize*sizeof(float), cudaMemcpyHostToDevice) );
                 kernels::intersect<<<1, 1>>>(key, d_orig, d_vel, shapeData, 1, ts, pts);
+                CudaErrchkNoCode();
                 CudaErrchk( cudaMemcpy(time, ts, groupsize*sizeof(float), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaMemcpy(point, pts, 2*sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaFree(d_orig) );
