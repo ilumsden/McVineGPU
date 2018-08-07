@@ -188,6 +188,7 @@ namespace mcvine
                         sd.push_back(0.05); sd.push_back(0.1);
                         groupsize = 4;
                         orig = Vec3<float>(0.1, -0.025, -0.05);
+                        vel = Vec3<float>(-0.05, 0.025, 0.05);
                         break;
                     case 2:
                         sd.push_back(0.002); sd.push_back(0.05); sd.push_back(0.1);
