@@ -1,6 +1,6 @@
-#include "gtest/gtest.h"
 #include <cuda_runtime.h>
 
+#include "gtest/gtest.h"
 #include "Ray.hpp"
 
 namespace mcvine

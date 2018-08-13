@@ -1,3 +1,5 @@
+#include <cuda_runtime.h>
+
 #include "gtest/gtest.h"
 #include "IntersectWrapper.hpp"
 
