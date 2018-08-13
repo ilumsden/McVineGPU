@@ -78,7 +78,6 @@ namespace mcvine
                  */
                 if (!solveQuadratic(a, b, c, t0, t1))
                 {
-                    printf("No intersect\n");
                     ts[0] = -1;
                     ts[1] = -1;
                 }
@@ -89,7 +88,6 @@ namespace mcvine
                  */
                 else if (t0 < 0)
                 {
-                    printf("One intersect\n");
                     /* ts[4*index + 3] stores the time of the second intersection
                      * between the neutron and the side of the Cylinder. Since a
                      * second intersection is not possible in this case, this element
@@ -118,7 +116,6 @@ namespace mcvine
                 // In this case, there are two valid intersection times.
                 else
                 {
-                    printf("Two Intersect\n");
                     // i is used to track the offset for ts
                     int i = 0;
                     if (fabsf(orig[2]+vel[2]*t0) < h/2)
