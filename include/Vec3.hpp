@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <stdexcept>
 
 #include "SystemVars.hpp"
@@ -54,6 +55,8 @@ namespace mcvine
                 __host__ __device__ Vec3<T> operator*(const Vec3<T> &b) const;
                 __host__ __device__ void operator*=(const T n);
                 __host__ __device__ void operator*=(const Vec3<T> &b);
+                __host__ __device__ Vec3<T> operator/(const T n) const;
+                __host__ __device__ void operator/=(const T n);
                 __host__ __device__ T operator|(const Vec3<T> &b) const;
                 __host__ __device__ bool operator==(const Vec3<T> &b) const;
                 __host__ __device__ bool operator!=(const Vec3<T> &b) const;
@@ -119,7 +122,7 @@ namespace mcvine
         #if defined(__CUDA_ARCH__)
             return sqrt( fabs(m_data[0])*fabs(m_data[0]) + fabs(m_data[1])*fabs(m_data[1]) + fabs(m_data[2])*fabs(m_data[2]) );
         #else
-            return std::sqrt( ::std::abs(m_data[0])*::std::abs(m_data[0]) + ::std::abs(m_data[1])*::std::abs(m_data[1]) + ::std::abs(m_data[2])*::std::abs(m_data[2]) );
+            return std::sqrt( std::abs(m_data[0])*std::abs(m_data[0]) + std::abs(m_data[1])*std::abs(m_data[1]) + std::abs(m_data[2])*std::abs(m_data[2]) );
         #endif
         }
 
@@ -218,6 +221,25 @@ namespace mcvine
             m_data[1] = tmp[2]*b[0] - tmp[0]*b[2];
             m_data[2] = tmp[0]*b[1] - tmp[1]*b[0];
         }
+        /* This function calculates a scalar division of a vector
+         * and stores the result in a new Vec3 object.
+         */
+        template <typename T>
+        __host__ __device__ Vec3<T> Vec3<T>::operator/(const T n) const
+        {
+            return Vec3<T>(m_data[0]/n, m_data[1]/n, m_data[2]/n);
+        }
+
+        /* This function calculates a scalar division of a vector
+         * and stores the result in the original Vec3 object.
+         */
+        template <typename T>
+        __host__ __device__ void Vec3<T>::operator/=(const T n)
+        {
+            m_data[0] /= n;
+            m_data[1] /= n;
+            m_data[2] /= n;
+        }
 
         /* This function calculates the dot product of two vectors and
          * returns the result.
@@ -235,7 +257,19 @@ namespace mcvine
         template <typename T>
         __host__ __device__ bool Vec3<T>::operator==(const Vec3<T> &b) const
         {
-            return (m_data[0] == b[0]) && (m_data[1] == b[1]) && (m_data[2] == b[2]);
+            float tol;
+            if ((m_data[0] < 1 && b[0] < 1) || (m_data[1] < 1 && b[1] < 1) || (m_data[2] < 1 && b[2] < 1))
+            {
+                tol = 1e-9;
+            }
+            else
+            {
+                tol = 1e-6;
+            }
+            //return (m_data[0] == b[0]) && (m_data[1] == b[1]) && (m_data[2] == b[2]);
+            return (fabs(float(m_data[0])-float(b[0])) < tol) && 
+                   (fabs(float(m_data[1])-float(b[1])) < tol) && 
+                   (fabs(float(m_data[2])-float(b[2])) < tol);
         }
 
         /* This function is a basic comparison operator that returns true
@@ -245,7 +279,19 @@ namespace mcvine
         template <typename T>
         __host__ __device__ bool Vec3<T>::operator!=(const Vec3<T> &b) const
         {
-            return (m_data[0] != b[0]) || (m_data[1] != b[1]) || (m_data[2] != b[2]);
+            float tol;
+            if ((m_data[0] < 1 && b[0] < 1) || (m_data[1] < 1 && b[1] < 1) || (m_data[2] < 1 && b[2] < 1))
+            {
+                tol = 1e-9;
+            }
+            else
+            {
+                tol = 1e-6;
+            }
+            //return (m_data[0] != b[0]) || (m_data[1] != b[1]) || (m_data[2] != b[2]);
+            return (fabs(float(m_data[0])-float(b[0])) >= tol) || 
+                   (fabs(float(m_data[1])-float(b[1])) >= tol) || 
+                   (fabs(float(m_data[2])-float(b[2])) >= tol);
         }
 
         /* This function is an alternate "getter" function that uses array
