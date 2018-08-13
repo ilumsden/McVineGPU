@@ -116,13 +116,6 @@ namespace mcvine
                 }
             }
 
-            __global__ void prepRand(curandState *state, int seed)
-            {
-                int idx = blockIdx.x * blockDim.x + threadIdx.x;
-                //curand_init((seed + idx), 0, 1, &state[idx]); 
-                curand_init(seed, idx, 0, &state[idx]); 
-            }
-
             __global__ void propagate(Vec3<float> *orig, float *ray_times,
                                       Vec3<float> *scat_pos, float *scat_times,
                                       const int N)

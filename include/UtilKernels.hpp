@@ -84,12 +84,6 @@ namespace mcvine
             __global__ void forceIntersectionOrder(float *ts, Vec3<float> *coords,
                                                    const int N);
 
-            /* This function seeds and initializes a cuRand random number generator
-             * using the cuRand States stored in state and the seed value "seed."
-             * This function can be called from host.
-             */
-            __global__ void prepRand(curandState *state, int seed);
-
             /* This function updates the neutrons' position and time data
              * using the contents of the `scat_pos` and `scat_times` arrays.
              */
