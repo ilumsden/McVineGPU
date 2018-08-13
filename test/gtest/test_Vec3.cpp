@@ -1,6 +1,7 @@
-#include "gtest/gtest.h"
 #include <cmath>
 #include <cuda_runtime.h>
+
+#include "gtest/gtest.h"
 #include "Vec3.hpp"
 
 namespace mcvine
@@ -171,6 +172,22 @@ namespace mcvine
                 EXPECT_FLOAT_EQ(v0_[0], -8.f);
                 EXPECT_FLOAT_EQ(v0_[1], -14.f);
                 EXPECT_FLOAT_EQ(v0_[2], 16.f);
+            }
+
+            TEST_F(Vec3Test, ConstDivideOp)
+            {
+                Vec3<float> test = v0_ / 2;
+                EXPECT_FLOAT_EQ(test[0], (3.f/2.f));
+                EXPECT_FLOAT_EQ(test[1], 2.f);
+                EXPECT_FLOAT_EQ(test[2], (5.f/2.f));
+            }
+
+            TEST_F(Vec3Test, ConstDivideEqOp)
+            {
+                v0_ /= 2;
+                EXPECT_FLOAT_EQ(v0_[0], (3.f/2.f));
+                EXPECT_FLOAT_EQ(v0_[1], 2.f);
+                EXPECT_FLOAT_EQ(v0_[2], (5.f/2.f));
             }
 
             TEST_F(Vec3Test, DotProductOp)
