@@ -1,3 +1,6 @@
+#ifndef INT_KERNEL_TEST_HPP
+#define INT_KERNEL_TEST_HPP
+
 #include "IntersectKernels.hpp"
 #include <cfloat>
 #include <vector>
@@ -47,3 +50,5 @@ namespace mcvine
     }
 
 }
+
+#endif

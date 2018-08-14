@@ -62,6 +62,12 @@ namespace mcvine
                 testRandCoord<<<1, 1>>>(d_orig, d_vel, d_itimes, d_pos, d_stimes, d_rand, 1);
                 CudaErrchk( cudaMemcpy(&pos, d_pos, sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaMemcpy(&scat_times, d_stimes, sizeof(float), cudaMemcpyDeviceToHost) );
+                CudaErrchk( cudaFree(d_orig) );
+                CudaErrchk( cudaFree(d_vel) );
+                CudaErrchk( cudaFree(d_pos) );
+                CudaErrchk( cudaFree(d_itimes) );
+                CudaErrchk( cudaFree(d_stimes) );
+                CudaErrchk( cudaFree(d_rand) );
             }
 
             void scatteringSiteTest(Vec3<float> &orig, Vec3<float> &vel, 
@@ -90,6 +96,12 @@ namespace mcvine
                 kernels::calcScatteringSites<<<1, 1>>>(d_itimes, d_orig, d_vel, d_pos, d_stimes, d_rand, 1);
                 CudaErrchk( cudaMemcpy(&pos, d_pos, sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 CudaErrchk( cudaMemcpy(&scat_times, d_stimes, sizeof(float), cudaMemcpyDeviceToHost) );
+                CudaErrchk( cudaFree(d_orig) );
+                CudaErrchk( cudaFree(d_vel) );
+                CudaErrchk( cudaFree(d_pos) );
+                CudaErrchk( cudaFree(d_itimes) );
+                CudaErrchk( cudaFree(d_stimes) );
+                CudaErrchk( cudaFree(d_rand) );
             }
 
             void isoScatterTest(Vec3<float> &vel)
@@ -108,6 +120,8 @@ namespace mcvine
                 testIsoScatterKernel<<<1, 1>>>(d_vel, d_rand, 1);
                 CudaErrchk( cudaMemcpy(&vel, d_vel, sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 delete [] rands;
+                CudaErrchk( cudaFree(d_vel) );
+                CudaErrchk( cudaFree(d_rand) );
             }
 
             void scatterTest(const int key, const float &time,
@@ -131,6 +145,9 @@ namespace mcvine
                 CudaErrchkNoCode();
                 CudaErrchk( cudaMemcpy(&vel, d_vel, sizeof(Vec3<float>), cudaMemcpyDeviceToHost) );
                 delete [] rands;
+                CudaErrchk( cudaFree(d_vel) );
+                CudaErrchk( cudaFree(d_rand) );
+                CudaErrchk( cudaFree(d_times) );
             }
 
         }
