@@ -63,7 +63,11 @@ namespace mcvine
                 __host__ __device__ bool operator!=(const Vec3<T> &b) const;
                 __host__ __device__ const T & operator[](int i) const;
                 __host__ __device__ T & operator[](int i);
-                __host__ friend std::ostream& operator<<(std::ostream &fout, Vec3<T> &vec);
+                __host__ friend std::ostream& operator<<(std::ostream &fout, const Vec3 &vec)
+                {
+                    fout << "(" << vec[0] << ", " << vec[1] << ", " << vec[2] << ")";
+                    return fout;
+                }
             private:
                 T m_data[3];
         };
@@ -343,13 +347,6 @@ namespace mcvine
         #endif
             }
             return m_data[i];
-        }
-
-        template <typename T>
-        __host__ std::ostream& operator<<(std::ostream &fout, Vec3<T> vec)
-        {
-            fout << "(" << vec[0] << ", " << vec[1] << ", " << vec[2] << ")";
-            return fout;
         }
 
     }
