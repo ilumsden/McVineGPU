@@ -89,9 +89,6 @@ namespace mcvine
                 scatterTest(key, time, vel);
                 EXPECT_NEAR(vel.length(), cpy.length(), 1e-6);
                 EXPECT_FALSE(vel == cpy);
-                //EXPECT_FALSE(abs(vel[0] - cpy[0]) < 1e-6);
-                //EXPECT_FALSE(abs(vel[1] - cpy[1]) < 1e-6);
-                //EXPECT_FALSE(abs(vel[2] - cpy[2]) < 1e-6);
             }
 
             TEST(ScatteringKernelTest, GeneralScatteringForIsoNoIntersection)
@@ -103,9 +100,6 @@ namespace mcvine
                 scatterTest(key, time, vel);
                 EXPECT_NEAR(vel.length(), cpy.length(), 1e-6);
                 EXPECT_TRUE(vel == cpy);
-                //EXPECT_TRUE(abs(vel[0] - cpy[0]) < 1e-6);
-                //EXPECT_TRUE(abs(vel[1] - cpy[1]) < 1e-6);
-                //EXPECT_TRUE(abs(vel[2] - cpy[2]) < 1e-6);
             }
 
         }

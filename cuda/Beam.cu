@@ -135,18 +135,18 @@ namespace mcvine
             for (int i = 0; i < N; i++)
             {
                 std::cout << std::fixed << std::setprecision(5) << std::setw(8) << std::right
-                     << origins[i][0]
-                 << " " << origins[i][1]
-                 << " " << origins[i][2]
-                 << " || "
-                         << vel[i][0]
-                         << " " << vel[i][1]
-                         << " " << vel[i][2]
-                         << " || "
-                         << times[i]
-                         << " || "
-                         << probs[i]
-                         << "\n\n";
+                          << origins[i][0]
+                          << " " << origins[i][1]
+                          << " " << origins[i][2]
+                          << " || "
+                          << vel[i][0]
+                          << " " << vel[i][1]
+                          << " " << vel[i][2]
+                          << " || "
+                          << times[i]
+                          << " || "
+                          << probs[i]
+                          << "\n\n";
             }
             /* If cout was redirected, this "fixes" it so that it prints to
              * stdout in the future. Otherwise, this does nothing.

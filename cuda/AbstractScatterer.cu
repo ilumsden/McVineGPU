@@ -96,13 +96,13 @@ namespace mcvine
                 CuRandErrchk( curandSetPseudoRandomGeneratorSeed(gen, time(NULL)) );
                 CuRandErrchk( curandGenerateUniform(gen, d_randnums, beam->N) );
                 // Calls the kernel for determining the scattering sites for the neutrons
-                mcvine::gpu::kernels::calcScatteringSites<<<beam->numBlocks, beam->blockSize>>>(ts, beam->d_origins, beam->d_vel, pos, scat_times, d_randnums, beam->N);
+                kernels::calcScatteringSites<<<beam->numBlocks, beam->blockSize>>>(ts, beam->d_origins, beam->d_vel, pos, scat_times, d_randnums, beam->N);
                 /* Propagates the neutrons to their scattering sites.
                  * In other words, the scattering coordinates and times are copied
                  * into the device arrays that store the neutrons' origins and times
                  * (d_origins and d_times respectively).
                  */
-                mcvine::gpu::kernels::propagate<<<beam->numBlocks, beam->blockSize>>>(beam->d_origins, beam->d_times, pos, scat_times, beam->N);
+                kernels::propagate<<<beam->numBlocks, beam->blockSize>>>(beam->d_origins, beam->d_times, pos, scat_times, beam->N);
                 CudaErrchkNoCode();
                 /* `ic` is a device-side array that stores the intersection
                  * coordinates between the neutron and scattering body, as calculated
