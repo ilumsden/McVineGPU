@@ -19,7 +19,7 @@ namespace mcvine
                                        std::shared_ptr<AbstractShape> s)
                     : AbstractScatterer(b, s) { type = 0; }
 
-                    ~IsotropicScatterer() { ; }
+                    virtual ~IsotropicScatterer() { ; }
 
                     virtual void scatter() override;
 

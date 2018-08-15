@@ -216,7 +216,7 @@ namespace mcvine
              * Note that this algorithm is not the same as the one used
              * currently in McVine.
              */
-            __device__ void intersectTriangle(float &ts, Vec3<float> *pts,
+            __device__ void intersectTriangle(float &ts, Vec3<float> &pts,
                                               const Vec3<float> &orig,
                                               const Vec3<float> &vel,
                                               const Vec3<float> &a,
@@ -298,7 +298,7 @@ namespace mcvine
                 ts = t;
                 if (off < 2)
                 {
-                    pts[off] = orig + vel*t;
+                    pts = orig + vel*t;
                     off++;
                 }
             }
@@ -403,28 +403,28 @@ namespace mcvine
                  * any intersections between the neutron and the triangular
                  * faces of the Pyramid.
                  */
-                intersectTriangle(ts[1], pts,
+                intersectTriangle(ts[1], pts[offset],
                                   origins,
                                   vel,
                                   Vec3<float>(0, 0, 0),
                                   Vec3<float>(shapeData[0]/2, shapeData[1]/2, -shapeData[2]),
                                   Vec3<float>(shapeData[0]/2, -shapeData[1]/2, -shapeData[2]),
                                   offset);
-                intersectTriangle(ts[2], pts,
+                intersectTriangle(ts[2], pts[offset],
                                   origins,
                                   vel,
                                   Vec3<float>(0, 0, 0),
                                   Vec3<float>(shapeData[0]/2, -shapeData[1]/2, -shapeData[2]),
                                   Vec3<float>(-shapeData[0]/2, -shapeData[1]/2, -shapeData[2]),
                                   offset);
-                intersectTriangle(ts[3], pts,
+                intersectTriangle(ts[3], pts[offset],
                                   origins,
                                   vel,
                                   Vec3<float>(0, 0, 0),
                                   Vec3<float>(-shapeData[0]/2, -shapeData[1]/2, -shapeData[2]),
                                   Vec3<float>(-shapeData[0]/2, shapeData[1]/2, -shapeData[2]),
                                   offset);
-                intersectTriangle(ts[4], pts,
+                intersectTriangle(ts[4], pts[offset],
                                   origins,
                                   vel,
                                   Vec3<float>(0, 0, 0),

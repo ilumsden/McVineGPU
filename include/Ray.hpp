@@ -23,6 +23,7 @@ namespace mcvine
                 origin[0] = a;
                 origin[1] = b;
                 origin[2] = c;
+                vel[0] = 0; vel[1] = 0; vel[2] = 0;
                 t = 0;
                 prob = 1;
             }

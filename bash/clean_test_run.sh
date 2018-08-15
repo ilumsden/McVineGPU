@@ -11,6 +11,6 @@ fi
 
 cd ..
 
-./build/TestSuite
+./build/McVineGPU_test
 
 echo "Test Suite Run Finished."

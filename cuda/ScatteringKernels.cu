@@ -41,7 +41,7 @@ namespace mcvine
                      * value of -5, there was no intersection, so the function
                      * terminates.
                      */
-                    if (ts[2*index] != -5 && ts[2*index+1] != -5)
+                    if (ts[2*index] >= 0 && ts[2*index+1] >= 0)
                     {
                         /* The randCoord function is called to determine the
                          * scattering site.
@@ -51,26 +51,19 @@ namespace mcvine
                 }
             }
 
-            __device__ void isotropicScatteringKernel(//const float *ray_time,
-                                                      Vec3<float> &vel,
+            __device__ void isotropicScatteringKernel(Vec3<float> &vel,
                                                       float *rands)
-                                                      //const int N)
             {
-                //int index = blockIdx.x * blockDim.x + threadIdx.x;
-                //if (index < N && ray_time[index] > 0)
-                //{
                 /* The z coordinate of the unit velocity vector is chosen
                  * at random and manipulated so that it falls between
                  * -1 and 1.
                  */
-                //float z = rands[2*index];
                 float z = rands[0];
                 z *= 2;
                 z -= 1;
                 /* The spherical coordinate `phi` is randomly chosen
                  * and manipulated so that it falls between 0 and 2*Pi.
                  */
-                //float phi = rands[2*index+1];
                 float phi = rands[1];
                 phi *= 2*PI;
                 /* Since z is based on a unit vector, theta is calculated
@@ -82,18 +75,14 @@ namespace mcvine
                  * must have the same magnitude as the pre-scattering velocity.
                  * As a result, the pre-scattering magnitude must be recorded.
                  */
-                //float r = vel[index].length();        
                 float r = vel.length();        
                 /* The post-scattering velocity is calculated using standard
                  * Spherical-to-Cartesian conversion.
                  */
-                //vel[index][0] = r * cosf(phi) * sinf(theta);
-                //vel[index][1] = r * sinf(phi) * sinf(theta);
-                //vel[index][2] = r * z;
                 vel[0] = r * cosf(phi) * sinf(theta);
                 vel[1] = r * sinf(phi) * sinf(theta);
                 vel[2] = r * z;
-                //}
+                printf("d_vel = (%f, %f, %f)\n", vel[0], vel[1], vel[2]);
             }
 
             __global__ void scatter(const int scatterKey, const float *ray_time,
