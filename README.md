@@ -10,10 +10,6 @@ The following dependencies are required to run the code in this repository:
   * This project supports separable compilation of device code. As a result, this should only be run on a Nvidia GPU with a Compute Capability of 2.0 or higher. You can find a list of GPUs and their Compute Capabilities [here](https://developer.nvidia.com/cuda-gpus). __Note:__ The hyperlinked website does _not_ list all CUDA capable Nvidia GPUs. Some GPUs that aren't listed (i.e. GeForce GTX 1050 Mobile) can still be used.
 * [A C++ compiler that supports C++11](https://gcc.gnu.org/gcc-4.8/)
 
-Additionally, the following dependency is required for compiling and running the tests in this repository:
-* *googletest* (v1.8 recommended)
-  * __Note:__ *googletest* must actually be installed to be used with this repository. It can be installed [from source](https://github.com/google/googletest/blob/master/googletest/README.md) or from a package manager, like [Anaconda](https://anaconda.org/conda-forge/gtest).
-
 ## Organization:
 
 The code in this repository is organized as follows:
