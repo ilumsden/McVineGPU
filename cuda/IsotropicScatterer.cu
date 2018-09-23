@@ -42,7 +42,7 @@ namespace mcvine
                 /* Calls the elasticScatteringKernel function to update the neutron
                  * velocities post-elastic scattering.
                  */
-                mcvine::gpu::kernels::scatter<<<beam->numBlocks, beam->blockSize>>>(type, beam->d_times, beam->d_vel, d_randnums, beam->N);
+                mcvine::gpu::kernels::scatter<<<beam->numBlocks, beam->blockSize>>>(type, beam->d_times, beam->d_vel, d_randnums, nullptr, beam->N);
                 CudaErrchkNoCode();
                 /* Copies the new neutron velocities into the host-side neutron
                  * velocity array.
