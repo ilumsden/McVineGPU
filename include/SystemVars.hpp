@@ -12,7 +12,12 @@ namespace mcvine
     {
 
         // The attenuation coefficient for the scattering material
+        // Unit: meters
         extern float atten;
+
+        // The mass of a neutron
+        // Unit: kg
+        const float m_neutron = 1.6749286e-27;
 
     }
 
