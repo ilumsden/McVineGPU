@@ -95,8 +95,8 @@ namespace mcvine
                 float k_f = m_neutron * E2vel(e_f);
                 float cost = (k_i*k_i + k_f*k_f - Q*Q) / (2*k_i*k_f);
                 float sint = sqrtf(1 - cost*cost);
-                vel[0] = E2vel(e_f) * sint * cos(phi);
-                vel[1] = E2vel(e_f) * sint * sin(phi);
+                vel[0] = E2vel(e_f) * sint * cos(phi*2*PI);
+                vel[1] = E2vel(e_f) * sint * sin(phi*2*PI);
                 vel[2] = E2vel(e_f) * cost;
             }
 
