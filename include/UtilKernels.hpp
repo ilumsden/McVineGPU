@@ -101,6 +101,10 @@ namespace mcvine
                                               const int p0GroupSize,
                                               const float atten, const int N);
 
+            __device__ float vel2E(float velocity);
+
+            __device__ float E2vel(float energy);
+
         }
 
     }

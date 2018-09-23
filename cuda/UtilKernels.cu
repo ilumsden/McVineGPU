@@ -150,6 +150,16 @@ namespace mcvine
                 }
             }
 
+            __device__ float vel2E(float velocity)
+            {
+                return 0.5 * m_neutron * powf(velocity, 2);
+            }
+
+            __device__ float E2vel(float energy)
+            {
+                return sqrtf((2*energy)/m_neutron);
+            }
+
         }
 
     }
