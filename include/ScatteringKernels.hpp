@@ -42,14 +42,16 @@ namespace mcvine
              * scattering velocity vector and stores the new velocity in the
              * neutron state velocity array.
              */
-            __device__ void isotropicScatteringKernel(//const float *ray_time,
-                                                      //Vec3<float> *vel,
-                                                      Vec3<float> &vel,
+            __device__ void isotropicScatteringKernel(Vec3<float> &vel,
                                                       float *rands);
-                                                      //const int N);
+
+            __device__ void qeScatteringKernel(Vec3<float> &vel,
+                                               const float Q, const float E,
+                                               float phi);
 
             __global__ void scatter(const int scatterKey, const float *ray_time, 
-                                    Vec3<float> *vel, float *rands, const int N);
+                                    Vec3<float> *vel, float *rands, 
+                                    const float *extradata, const int N);
 
         }
 

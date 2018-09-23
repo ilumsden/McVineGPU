@@ -82,11 +82,27 @@ namespace mcvine
                 vel[0] = r * cosf(phi) * sinf(theta);
                 vel[1] = r * sinf(phi) * sinf(theta);
                 vel[2] = r * z;
-                printf("d_vel = (%f, %f, %f)\n", vel[0], vel[1], vel[2]);
+                //printf("d_vel = (%f, %f, %f)\n", vel[0], vel[1], vel[2]);
+            }
+
+            __device__ void qeScatteringKernel(Vec3<float> &vel,
+                                               const float Q, const float E,
+                                               float phi)
+            {
+                float e_i = vel2E(vel.length());
+                float e_f = e_i - E;
+                float k_i = m_neutron * vel.length();
+                float k_f = m_neutron * E2vel(e_f);
+                float cost = (k_i*k_i + k_f*k_f - Q*Q) / (2*k_i*k_f);
+                float sint = sqrtf(1 - cost*cost);
+                vel[0] = E2vel(e_f) * sint * cos(phi);
+                vel[1] = E2vel(e_f) * sint * sin(phi);
+                vel[2] = E2vel(e_f) * cost;
             }
 
             __global__ void scatter(const int scatterKey, const float *ray_time,
-                                    Vec3<float> *vel, float *rands, const int N)
+                                    Vec3<float> *vel, float *rands, 
+                                    const float *extradata, const int N)
             {
                 int index = blockIdx.x * blockDim.x + threadIdx.x;
                 if (index < N && ray_time[index] > 0)
@@ -95,6 +111,9 @@ namespace mcvine
                     {
                         case 0:
                             isotropicScatteringKernel(vel[index], &(rands[2*index]));
+                            break;
+                        case 1:
+                            qeScatteringKernel(vel[index], extradata[0], extradata[1], rands[index]);
                             break;
                         default:
                             printf("Error: Invalid value for \"scatterKey\" (currently must be 0).\nExiting GPU.\n");
