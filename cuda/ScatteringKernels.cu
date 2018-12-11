@@ -85,9 +85,9 @@ namespace mcvine
                 //printf("d_vel = (%f, %f, %f)\n", vel[0], vel[1], vel[2]);
             }
 
-            __device__ void qeScatteringKernel(Vec3<float> &vel,
-                                               const float Q, const float E,
-                                               float phi)
+            __device__ void constQeScatteringKernel(Vec3<float> &vel,
+                                                    const float Q, const float E,
+                                                    float phi)
             {
                 float e_i = vel2E(vel.length());
                 float e_f = e_i - E;
@@ -113,7 +113,7 @@ namespace mcvine
                             isotropicScatteringKernel(vel[index], &(rands[2*index]));
                             break;
                         case 1:
-                            qeScatteringKernel(vel[index], extradata[0], extradata[1], rands[index]);
+                            constQeScatteringKernel(vel[index], extradata[0], extradata[1], rands[index]);
                             break;
                         default:
                             printf("Error: Invalid value for \"scatterKey\" (currently must be 0).\nExiting GPU.\n");

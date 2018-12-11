@@ -1,5 +1,5 @@
-#ifndef ISO_SCATTER_HPP
-#define ISO_SCATTER_HPP
+#ifndef CONST_QE_SCATTER_HPP
+#define CONST_QE_SCATTER_HPP
 
 #include "AbstractScatterer.hpp"
 

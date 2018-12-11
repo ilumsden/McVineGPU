@@ -45,9 +45,9 @@ namespace mcvine
             __device__ void isotropicScatteringKernel(Vec3<float> &vel,
                                                       float *rands);
 
-            __device__ void qeScatteringKernel(Vec3<float> &vel,
-                                               const float Q, const float E,
-                                               float phi);
+            __device__ void constQeScatteringKernel(Vec3<float> &vel,
+                                                    const float Q, const float E,
+                                                    float phi);
 
             __global__ void scatter(const int scatterKey, const float *ray_time, 
                                     Vec3<float> *vel, float *rands, 

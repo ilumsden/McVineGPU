@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdio>
 #include <ctime>
 #include <random>
@@ -7,12 +8,14 @@
 #include <chrono>
 
 #include "IsotropicScatterer.hpp"
+#include "ConstantQEScatterer.hpp"
 #include "Beam.hpp"
 #include "SystemVars.hpp"
 
 typedef mcvine::gpu::composite::AbstractShape AbstractShape;
 typedef mcvine::gpu::Beam Beam;
 typedef mcvine::gpu::scatter::IsotropicScatterer IsotropicScatterer;
+typedef mcvine::gpu::scatter::ConstantQEScatterer ConstantQEScatterer;
 typedef mcvine::gpu::Ray Ray;
 
 typedef mcvine::gpu::composite::Box Box;
@@ -94,8 +97,10 @@ int main(int argc, char **argv)
         z -= 0.05;
     }
     rays.push_back(std::make_shared<Ray>(x, y, z, vx, vy, vz));
-    std::shared_ptr<Beam> beam = std::make_shared<Beam>(rays, 100000000, blockSize);
-    mcvine::gpu::scatter::IsotropicScatterer iso(beam, b);
+    //std::shared_ptr<Beam> beam = std::make_shared<Beam>(rays, 100000000, blockSize);
+    std::shared_ptr<Beam> beam = std::make_shared<Beam>(rays, 1000, blockSize);
+    //mcvine::gpu::scatter::IsotropicScatterer iso(beam, b);
+    mcvine::gpu::scatter::ConstantQEScatterer iso(beam, b, 1.4*pow(10, -27), 5*pow(10,-28));
     iso.scatter();
     std::fstream fout;
     fout.open(fname, std::ios::out | std::ios::trunc | std::ios::binary);

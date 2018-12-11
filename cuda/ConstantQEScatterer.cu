@@ -39,7 +39,7 @@ namespace mcvine
                 CuRandErrchk( curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT) );
                 CuRandErrchk( curandSetPseudoRandomGeneratorSeed(gen, time(NULL)) );
                 CuRandErrchk( curandGenerateUniform(gen, d_randnums, beam->N) );
-                const float *QE;
+                float *QE;
                 CudaErrchk( cudaMalloc(&QE, 2) );
                 CudaErrchk( cudaMemcpy(&QE[0], &Q, sizeof(float), cudaMemcpyHostToDevice) );
                 CudaErrchk( cudaMemcpy(&QE[1], &E, sizeof(float), cudaMemcpyHostToDevice) );
